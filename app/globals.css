@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-glpi-border;
+  }
+  body {
+    @apply bg-glpi-bg text-glpi-text antialiased;
+  }
+  .overflow-auto::-webkit-scrollbar {
+    width: 4px;
+  }
+  .overflow-auto::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .overflow-auto::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 2px;
+  }
+}
+
+@keyframes pulse-once {
+  0% { background-color: rgba(174, 196, 59, 0.15); }
+  50% { background-color: rgba(174, 196, 59, 0.3); }
+  100% { background-color: rgba(174, 196, 59, 0.08); }
+}
+
+.animate-pulse-once {
+  animation: pulse-once 2s ease-in-out 3;
+}
