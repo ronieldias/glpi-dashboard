@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { POLLING_INTERVAL } from "@/lib/utils";
+import { useFilter } from "@/hooks/useFilter";
 
 async function fetchTickets(view: string, params?: Record<string, string>) {
   const searchParams = new URLSearchParams({ view, ...params });
@@ -15,9 +16,11 @@ async function fetchTickets(view: string, params?: Record<string, string>) {
 }
 
 export function useTicketsAll() {
+  const { filterParams } = useFilter();
+
   return useQuery({
-    queryKey: ["tickets", "all"],
-    queryFn: () => fetchTickets("all"),
+    queryKey: ["tickets", "all", filterParams],
+    queryFn: () => fetchTickets("all", filterParams),
     refetchInterval: POLLING_INTERVAL,
     meta: {
       onError: (error: Error) => {
@@ -32,33 +35,41 @@ export function useTicketsAll() {
 }
 
 export function useTicketKPIs() {
+  const { filterParams } = useFilter();
+
   return useQuery({
-    queryKey: ["tickets", "kpis"],
-    queryFn: () => fetchTickets("kpis"),
+    queryKey: ["tickets", "kpis", filterParams],
+    queryFn: () => fetchTickets("kpis", filterParams),
     refetchInterval: POLLING_INTERVAL,
   });
 }
 
 export function useTicketsByStatus() {
+  const { filterParams } = useFilter();
+
   return useQuery({
-    queryKey: ["tickets", "by-status"],
-    queryFn: () => fetchTickets("by-status"),
+    queryKey: ["tickets", "by-status", filterParams],
+    queryFn: () => fetchTickets("by-status", filterParams),
     refetchInterval: POLLING_INTERVAL,
   });
 }
 
 export function useTicketTrend(days: number) {
+  const { filterParams } = useFilter();
+
   return useQuery({
-    queryKey: ["tickets", "trend", days],
-    queryFn: () => fetchTickets("trend", { days: String(days) }),
+    queryKey: ["tickets", "trend", days, filterParams],
+    queryFn: () => fetchTickets("trend", { days: String(days), ...filterParams }),
     refetchInterval: POLLING_INTERVAL,
   });
 }
 
 export function useRecentTickets() {
+  const { filterParams } = useFilter();
+
   return useQuery({
-    queryKey: ["tickets", "recent"],
-    queryFn: () => fetchTickets("recent"),
+    queryKey: ["tickets", "recent", filterParams],
+    queryFn: () => fetchTickets("recent", filterParams),
     refetchInterval: POLLING_INTERVAL,
   });
 }

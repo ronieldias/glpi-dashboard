@@ -12,17 +12,34 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const view = searchParams.get("view") || "all";
+    const dateFrom = searchParams.get("dateFrom");
+    const dateTo = searchParams.get("dateTo");
 
-    const [projects, tasks] = await Promise.all([
+    const [allProjects, allTasks] = await Promise.all([
       glpiFetch<GLPIProject[]>("/Project", {
         range: "0-200",
         expand_dropdowns: "true",
       }),
       glpiFetch<GLPIProjectTask[]>("/ProjectTask", {
-        range: "0-500",
+        range: "0-1000",
         expand_dropdowns: "true",
       }),
     ]);
+
+    // Filtrar por periodo se fornecido
+    let projects = allProjects;
+    let tasks = allTasks;
+    if (dateFrom || dateTo) {
+      projects = allProjects.filter((p) => {
+        const createdDate = p.date_creation?.split(" ")[0];
+        if (!createdDate) return false;
+        if (dateFrom && createdDate < dateFrom) return false;
+        if (dateTo && createdDate > dateTo) return false;
+        return true;
+      });
+      const projectIds = new Set(projects.map((p) => p.id));
+      tasks = allTasks.filter((t) => projectIds.has(t.projects_id));
+    }
 
     if (view === "kpis") {
       return NextResponse.json(buildKPIs(projects, tasks));
@@ -37,7 +54,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (view === "tasks-summary") {
-      return NextResponse.json(buildTasksSummary(projects, tasks));
+      return NextResponse.json(buildTasksByStatus(tasks));
     }
 
     if (view === "timeline") {
@@ -48,12 +65,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(buildList(projects));
     }
 
+
+
+
     // "all"
     return NextResponse.json({
       kpis: buildKPIs(projects, tasks),
       byStatus: buildByStatus(projects),
       progress: buildProgress(projects),
-      tasksSummary: buildTasksSummary(projects, tasks),
+      tasksSummary: buildTasksByStatus(tasks),
       timeline: buildTimeline(projects),
       list: buildList(projects),
     });
@@ -94,7 +114,11 @@ function buildKPIs(projects: GLPIProject[], tasks: GLPIProjectTask[]): ProjectKP
 
   const overdueProjects = projects.filter(isOverdue).length;
 
-  const openTasks = tasks.filter((t) => t.percent_done < 100).length;
+  // Tarefas que nao sao "Finalizado" nem "Cancelado"
+  const openTasks = tasks.filter((t) => {
+    const state = getTaskState(t);
+    return state !== "finalizado" && state !== "cancelado";
+  }).length;
 
   return { activeProjects, completedThisYear, overdueProjects, openTasks };
 }
@@ -142,24 +166,47 @@ function buildProgress(projects: GLPIProject[]): ChartDataItem[] {
     }));
 }
 
-function buildTasksSummary(
-  projects: GLPIProject[],
-  tasks: GLPIProjectTask[]
-): { name: string; open: number; closed: number }[] {
-  const activeProjects = projects.filter(isActiveStatus);
+function getTaskState(task: GLPIProjectTask): string {
+  // Com expand_dropdowns, projectstates_id vem como string com o nome do status
+  const raw = task as Record<string, unknown>;
+  const state = String(raw["projectstates_id"] || "").toLowerCase().trim();
+  if (state.includes("finalizado")) return "finalizado";
+  if (state.includes("andamento")) return "em andamento";
+  if (state.includes("cancelado")) return "cancelado";
+  if (state.includes("novo")) return "novo";
+  // Fallback pelo percent_done
+  if (task.percent_done >= 100) return "finalizado";
+  if (task.percent_done > 0) return "em andamento";
+  return "novo";
+}
 
-  return activeProjects
-    .map((p) => {
-      const projectTasks = tasks.filter((t) => t.projects_id === p.id);
-      return {
-        name: p.name.length > 25 ? p.name.slice(0, 25) + "..." : p.name,
-        open: projectTasks.filter((t) => t.percent_done < 100).length,
-        closed: projectTasks.filter((t) => t.percent_done >= 100).length,
-      };
-    })
-    .filter((p) => p.open + p.closed > 0)
-    .sort((a, b) => b.open + b.closed - (a.open + a.closed))
-    .slice(0, 10);
+function buildTasksByStatus(tasks: GLPIProjectTask[]): ChartDataItem[] {
+  const statusColors: Record<string, string> = {
+    "Novo": "#3B82F6",
+    "Em andamento": "#F59E0B",
+    "Finalizado": "#10B981",
+    "Cancelado": "#EF4444",
+  };
+
+  const statusLabels: Record<string, string> = {
+    "novo": "Novo",
+    "em andamento": "Em andamento",
+    "finalizado": "Finalizado",
+    "cancelado": "Cancelado",
+  };
+
+  const counts: Record<string, number> = {};
+  tasks.forEach((t) => {
+    const state = getTaskState(t);
+    const label = statusLabels[state] || state;
+    counts[label] = (counts[label] || 0) + 1;
+  });
+
+  return Object.entries(counts).map(([name, value]) => ({
+    name,
+    value,
+    color: statusColors[name] || "#6B7280",
+  }));
 }
 
 function buildTimeline(projects: GLPIProject[]): ProjectTimelineItem[] {

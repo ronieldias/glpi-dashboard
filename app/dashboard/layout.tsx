@@ -12,10 +12,10 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
+    <div className="h-screen flex flex-col">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <Header onMenuToggle={() => setSidebarOpen((o) => !o)} />
-      <main className="flex-1 overflow-auto p-3">{children}</main>
+      <main className="flex-1 min-h-0 overflow-hidden p-2">{children}</main>
     </div>
   );
 }

@@ -14,7 +14,7 @@ export function ProjectTimeline({ data, loading }: ProjectTimelineProps) {
   if (loading || !data) {
     return (
       <Card>
-        <CardHeader className="pb-1 pt-3 px-3">
+        <CardHeader className="pb-0.5 pt-1.5 px-3">
           <CardTitle className="text-xs">Timeline dos Projetos</CardTitle>
         </CardHeader>
         <CardContent className="px-3 pb-2">
@@ -27,11 +27,11 @@ export function ProjectTimeline({ data, loading }: ProjectTimelineProps) {
   if (data.length === 0) {
     return (
       <Card>
-        <CardHeader className="pb-1 pt-3 px-3">
+        <CardHeader className="pb-0.5 pt-1.5 px-3">
           <CardTitle className="text-xs">Timeline dos Projetos</CardTitle>
         </CardHeader>
         <CardContent className="px-3 pb-2">
-          <p className="text-center text-[10px] text-gray-400">Nenhum projeto com datas planejadas</p>
+          <p className="text-center text-[10px] text-muted-foreground">Nenhum projeto com datas planejadas</p>
         </CardContent>
       </Card>
     );
@@ -44,7 +44,7 @@ export function ProjectTimeline({ data, loading }: ProjectTimelineProps) {
 
   return (
     <Card>
-      <CardHeader className="pb-1 pt-3 px-3">
+      <CardHeader className="pb-0.5 pt-1.5 px-3">
         <CardTitle className="text-xs">Timeline dos Projetos</CardTitle>
       </CardHeader>
       <CardContent className="px-3 pb-2">
@@ -56,8 +56,8 @@ export function ProjectTimeline({ data, loading }: ProjectTimelineProps) {
 
             return (
               <div key={project.id} className="flex items-center gap-2">
-                <div className="w-28 shrink-0 truncate text-[9px] text-gray-600">{project.name}</div>
-                <div className="relative h-5 flex-1 rounded bg-gray-100">
+                <div className="w-28 shrink-0 truncate text-[9px] text-muted">{project.name}</div>
+                <div className="relative h-5 flex-1 rounded bg-progress-track">
                   <div
                     className="absolute top-0 h-full rounded"
                     style={{
@@ -74,7 +74,7 @@ export function ProjectTimeline({ data, loading }: ProjectTimelineProps) {
                     {project.percent}%
                   </span>
                 </div>
-                <div className="w-28 shrink-0 text-right text-[8px] text-gray-400">
+                <div className="w-28 shrink-0 text-right text-[8px] text-muted-foreground">
                   {formatDateShort(project.start)} - {formatDateShort(project.end)}
                 </div>
               </div>

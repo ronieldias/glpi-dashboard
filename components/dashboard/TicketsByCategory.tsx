@@ -21,18 +21,17 @@ interface TicketsByCategoryProps {
 export function TicketsByCategory({ data, loading }: TicketsByCategoryProps) {
   if (loading || !data) {
     return (
-      <Card className="h-full">
-        <CardHeader className="pb-1 pt-3 px-3">
+      <Card className="h-full flex flex-col">
+        <CardHeader className="pb-0.5 pt-1.5 px-3">
           <CardTitle className="text-xs">Top 10 Categorias</CardTitle>
         </CardHeader>
-        <CardContent className="px-3 pb-2">
-          <Skeleton className="h-[200px] w-full" />
+        <CardContent className="flex-1 px-3 pb-2">
+          <Skeleton className="h-full w-full" />
         </CardContent>
       </Card>
     );
   }
 
-  // Truncar nomes longos
   const truncated = data.map((d) => ({
     ...d,
     name: d.name.length > 20 ? d.name.slice(0, 18) + "..." : d.name,
@@ -40,22 +39,23 @@ export function TicketsByCategory({ data, loading }: TicketsByCategoryProps) {
   }));
 
   return (
-    <Card className="h-full">
-      <CardHeader className="pb-1 pt-3 px-3">
+    <Card className="h-full flex flex-col">
+      <CardHeader className="pb-0.5 pt-1.5 px-3">
         <CardTitle className="text-xs">Top 10 Categorias</CardTitle>
       </CardHeader>
-      <CardContent className="px-1 pb-2">
-        <ResponsiveContainer width="100%" height={200}>
+      <CardContent className="flex-1 px-1 pb-2">
+        <ResponsiveContainer width="100%" height="100%">
           <BarChart data={truncated} layout="vertical" margin={{ left: 10, right: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-            <XAxis type="number" fontSize={10} />
-            <YAxis type="category" dataKey="name" width={110} fontSize={9} tick={{ fill: "#374151" }} />
+            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-chart-grid)" />
+            <XAxis type="number" fontSize={10} tick={{ fill: "var(--color-chart-text)" }} />
+            <YAxis type="category" dataKey="name" width={110} fontSize={9} tick={{ fill: "var(--color-chart-text)" }} />
             <Tooltip
               formatter={(value: number) => [value, "Chamados"]}
               labelFormatter={(label) => {
                 const item = truncated.find((d) => d.name === label);
                 return item?.fullName || label;
               }}
+              contentStyle={{ backgroundColor: "var(--color-card)", border: "1px solid var(--color-border)", color: "var(--color-card-fg)" }}
             />
             <Bar dataKey="value" name="Chamados" fill="#8B5CF6" radius={[0, 3, 3, 0]} />
           </BarChart>

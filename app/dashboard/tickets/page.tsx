@@ -18,38 +18,35 @@ export default function TicketsPage() {
   useTicketAnnouncer(data?.recent);
 
   return (
-    <div className="flex h-full flex-col gap-3">
-      {/* KPIs */}
-      <div className="grid grid-cols-4 gap-2">
+    <div className="h-full grid grid-cols-4 grid-rows-[auto_minmax(0,1fr)_minmax(0,1fr)] gap-2 overflow-hidden">
+      {/* KPIs - primeira linha, 3 colunas */}
+      <div className="col-span-3 grid grid-cols-4 gap-2">
         <KPICard title="Chamados abertos" value={data?.kpis?.totalOpen ?? "-"} icon={Ticket} loading={isLoading} />
         <KPICard title="Fechados no mes" value={data?.kpis?.closedThisMonth ?? "-"} icon={CheckCircle} loading={isLoading} />
         <KPICard title="SLA vencido" value={data?.kpis?.slaOverdue ?? "-"} icon={AlertTriangle} highlight={(data?.kpis?.slaOverdue ?? 0) > 0} loading={isLoading} />
         <KPICard title="Tempo medio resolucao" value={data?.kpis?.avgResolutionHours ? `${data.kpis.avgResolutionHours}h` : "-"} icon={Clock} loading={isLoading} />
       </div>
 
-      {/* Conteudo principal */}
-      <div className="flex-1 grid grid-cols-4 gap-2 min-h-0">
-        {/* Coluna 1-3: Graficos */}
-        <div className="col-span-3 grid grid-cols-3 grid-rows-2 gap-2 min-h-0">
-          {/* Linha 1 */}
-          <TicketsByStatus data={data?.byStatus} loading={isLoading} />
-          <TicketsByPriority data={data?.byPriority} loading={isLoading} />
-          <SLAIndicator data={data?.byType} loading={isLoading} />
-          {/* Linha 2 */}
-          <TicketsByTechnician data={data?.byTechnician} loading={isLoading} />
-          <TicketsByCategory data={data?.byCategory} loading={isLoading} />
-          <div className="flex flex-col">
-            <TicketsTrend
-              data7={data?.trend7}
-              data30={data?.trend30}
-              data90={data?.trend90}
-              loading={isLoading}
-            />
-          </div>
-        </div>
-
-        {/* Coluna 4: Lista de chamados recentes */}
+      {/* Chamados recentes - coluna direita, ocupa todas as linhas */}
+      <div className="row-span-3 min-h-0 overflow-hidden">
         <RecentTicketsList data={data?.recent} loading={isLoading} />
+      </div>
+
+      {/* Graficos - linha 2 (3 paineis) */}
+      <div className="col-span-3 grid grid-cols-3 gap-2 min-h-0 overflow-hidden">
+        <TicketsByStatus data={data?.byStatus} loading={isLoading} />
+        <TicketsByPriority data={data?.byPriority} loading={isLoading} />
+        <SLAIndicator data={data?.byType} loading={isLoading} />
+      </div>
+
+      {/* Graficos - linha 3 (3 paineis) */}
+      <div className="col-span-3 grid grid-cols-3 gap-2 min-h-0 overflow-hidden">
+        <TicketsByTechnician data={data?.byTechnician} loading={isLoading} />
+        <TicketsByCategory data={data?.byCategory} loading={isLoading} />
+        <TicketsTrend
+          data={data?.trend}
+          loading={isLoading}
+        />
       </div>
     </div>
   );

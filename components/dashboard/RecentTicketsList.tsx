@@ -1,10 +1,8 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { TicketTypeLabel } from "@/types/glpi";
 
 interface RecentTicket {
   id: number;
@@ -43,7 +41,7 @@ export function RecentTicketsList({ data, loading }: RecentTicketsListProps) {
   if (loading || !data) {
     return (
       <Card className="h-full flex flex-col">
-        <CardHeader className="pb-1 pt-3 px-3">
+        <CardHeader className="pb-0.5 pt-1.5 px-3">
           <CardTitle className="text-xs">Chamados Recentes</CardTitle>
         </CardHeader>
         <CardContent className="flex-1 px-3 pb-2">
@@ -59,7 +57,7 @@ export function RecentTicketsList({ data, loading }: RecentTicketsListProps) {
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="pb-1 pt-3 px-3">
+      <CardHeader className="pb-0.5 pt-1.5 px-3">
         <CardTitle className="text-xs flex items-center gap-2">
           Chamados Recentes
           <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-glpi-primary text-[8px] text-white font-bold">
@@ -77,33 +75,30 @@ export function RecentTicketsList({ data, loading }: RecentTicketsListProps) {
                 index === 0 && "bg-glpi-primary/10 border border-glpi-primary/20 animate-pulse-once"
               )}
             >
-              {/* Indicador de tipo */}
               <div className={cn(
                 "mt-0.5 shrink-0 rounded px-1 py-0.5 text-[8px] font-bold uppercase",
-                ticket.type === 1 ? "bg-red-100 text-red-700" : "bg-glpi-primary/20 text-glpi-primary-dark"
+                ticket.type === 1 ? "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400" : "bg-glpi-primary/20 text-glpi-primary-dark"
               )}>
                 {ticket.type === 1 ? "INC" : "REQ"}
               </div>
 
-              {/* Info */}
               <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-medium text-gray-900 truncate leading-tight">
+                <p className="text-[11px] font-medium text-card-foreground truncate leading-tight">
                   {ticket.name}
                 </p>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-[9px] text-gray-500">{ticket.recipientName}</span>
+                  <span className="text-[9px] text-muted">{ticket.recipientName}</span>
                   {ticket.location && ticket.location !== "0" && ticket.location !== "-" && (
                     <>
-                      <span className="text-[9px] text-gray-300">|</span>
-                      <span className="text-[9px] text-gray-400">{ticket.location}</span>
+                      <span className="text-[9px] text-muted-foreground">|</span>
+                      <span className="text-[9px] text-muted-foreground">{ticket.location}</span>
                     </>
                   )}
                 </div>
               </div>
 
-              {/* Meta */}
               <div className="shrink-0 text-right flex flex-col items-end gap-0.5">
-                <span className="text-[9px] text-gray-400">{timeAgo(ticket.date_creation)}</span>
+                <span className="text-[9px] text-muted-foreground">{timeAgo(ticket.date_creation)}</span>
                 <span
                   className="inline-block h-1.5 w-1.5 rounded-full"
                   style={{ backgroundColor: ticket.priorityColor }}

@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTheme } from "@/hooks/useTheme";
 
 const navItems = [
   { label: "Overview", href: "/dashboard", icon: LayoutDashboard },
@@ -24,6 +25,7 @@ interface SidebarProps {
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const { theme } = useTheme();
 
   if (!open) return null;
 
@@ -31,10 +33,10 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     <>
       <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />
       <aside className="fixed left-0 top-0 z-50 flex h-screen w-56 flex-col bg-glpi-dark shadow-xl">
-        <div className="flex h-12 items-center justify-between border-b border-gray-700 px-4">
+        <div className="flex h-12 items-center justify-between border-b border-header-border px-4">
           <div className="flex items-center gap-2">
             <Image
-              src="/logo-fadex.png"
+              src={theme === "dark" ? "/logo-branca.webp" : "/logo-preta.webp"}
               alt="FADEX"
               width={80}
               height={28}
@@ -69,7 +71,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             );
           })}
         </nav>
-        <div className="border-t border-gray-700 p-3">
+        <div className="border-t border-header-border p-3">
           <p className="text-[10px] text-gray-500">FADEX - Dashboard GLPI</p>
         </div>
       </aside>

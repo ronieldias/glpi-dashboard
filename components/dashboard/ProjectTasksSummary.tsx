@@ -1,59 +1,86 @@
 "use client";
 
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
+  PieChart,
+  Pie,
+  Cell,
   ResponsiveContainer,
   Legend,
+  Tooltip,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-
-interface TaskSummaryItem {
-  name: string;
-  open: number;
-  closed: number;
-}
+import type { ChartDataItem } from "@/types/glpi";
 
 interface ProjectTasksSummaryProps {
-  data?: TaskSummaryItem[];
+  data?: ChartDataItem[];
   loading?: boolean;
 }
 
 export function ProjectTasksSummary({ data, loading }: ProjectTasksSummaryProps) {
-  if (loading || !data) {
+  if (loading) {
     return (
-      <Card className="h-full">
-        <CardHeader className="pb-1 pt-3 px-3">
-          <CardTitle className="text-xs">Tarefas Abertas x Concluidas</CardTitle>
+      <Card className="h-full flex flex-col">
+        <CardHeader className="pb-0.5 pt-1.5 px-3">
+          <CardTitle className="text-xs">Tarefas por Status</CardTitle>
         </CardHeader>
-        <CardContent className="px-3 pb-2">
-          <Skeleton className="h-[200px] w-full" />
+        <CardContent className="flex-1 px-3 pb-2">
+          <Skeleton className="h-full w-full" />
         </CardContent>
       </Card>
     );
   }
 
+  if (!data || data.length === 0) {
+    return (
+      <Card className="h-full flex flex-col">
+        <CardHeader className="pb-0.5 pt-1.5 px-3">
+          <CardTitle className="text-xs">Tarefas por Status</CardTitle>
+        </CardHeader>
+        <CardContent className="flex-1 flex items-center justify-center px-3 pb-2">
+          <p className="text-[10px] text-muted-foreground">Nenhuma tarefa encontrada</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const total = data.reduce((s, d) => s + d.value, 0);
+
   return (
-    <Card className="h-full">
-      <CardHeader className="pb-1 pt-3 px-3">
-        <CardTitle className="text-xs">Tarefas Abertas x Concluidas</CardTitle>
+    <Card className="h-full flex flex-col">
+      <CardHeader className="pb-0.5 pt-1.5 px-3">
+        <CardTitle className="text-xs">Tarefas por Status</CardTitle>
       </CardHeader>
-      <CardContent className="px-1 pb-2">
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={data} margin={{ left: 10, right: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="name" fontSize={8} angle={-15} textAnchor="end" height={40} />
-            <YAxis fontSize={10} width={25} />
-            <Tooltip />
-            <Legend iconSize={8} wrapperStyle={{ fontSize: "10px" }} />
-            <Bar dataKey="open" name="Abertas" stackId="a" fill="#EF4444" />
-            <Bar dataKey="closed" name="Concluidas" stackId="a" fill="#AEC43B" radius={[3, 3, 0, 0]} />
-          </BarChart>
+      <CardContent className="flex-1 px-1 pb-2">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="45%"
+              innerRadius="30%"
+              outerRadius="55%"
+              paddingAngle={2}
+              dataKey="value"
+              nameKey="name"
+            >
+              {data.map((entry, index) => (
+                <Cell key={index} fill={entry.color || "#6B7280"} />
+              ))}
+            </Pie>
+            <Tooltip
+              formatter={(value: number) => [`${value} (${Math.round(value / total * 100)}%)`, ""]}
+              contentStyle={{ backgroundColor: "var(--color-card)", border: "1px solid var(--color-border)", color: "var(--color-card-fg)" }}
+            />
+            <Legend
+              iconSize={8}
+              wrapperStyle={{ fontSize: "10px" }}
+              formatter={(value: string) => {
+                const item = data.find((d) => d.name === value);
+                return `${value}: ${item?.value || 0}`;
+              }}
+            />
+          </PieChart>
         </ResponsiveContainer>
       </CardContent>
     </Card>

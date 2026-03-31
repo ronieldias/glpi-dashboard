@@ -1,6 +1,6 @@
 "use client";
 
-import { Ticket, CheckCircle, AlertTriangle, Clock, FolderKanban, FolderCheck, CalendarClock, ListTodo } from "lucide-react";
+import { Ticket, CheckCircle, Clock, FolderKanban, FolderCheck, CalendarClock, ListTodo } from "lucide-react";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { TicketsByStatus } from "@/components/dashboard/TicketsByStatus";
 import { TicketsTrend } from "@/components/dashboard/TicketsTrend";
@@ -18,12 +18,11 @@ export default function OverviewPage() {
   useTicketAnnouncer(ticketsData?.recent);
 
   return (
-    <div className="flex h-full flex-col gap-3">
-      {/* KPIs */}
-      <div className="grid grid-cols-8 gap-2">
+    <div className="h-full grid grid-cols-4 grid-rows-[auto_minmax(0,1fr)_minmax(0,1fr)] gap-2 overflow-hidden">
+      {/* KPIs - primeira linha, 3 colunas */}
+      <div className="col-span-3 grid grid-cols-7 gap-2">
         <KPICard title="Chamados abertos" value={ticketsData?.kpis?.totalOpen ?? "-"} icon={Ticket} loading={ticketsLoading} />
         <KPICard title="Fechados no mes" value={ticketsData?.kpis?.closedThisMonth ?? "-"} icon={CheckCircle} loading={ticketsLoading} />
-        <KPICard title="SLA vencido" value={ticketsData?.kpis?.slaOverdue ?? "-"} icon={AlertTriangle} highlight={(ticketsData?.kpis?.slaOverdue ?? 0) > 0} loading={ticketsLoading} />
         <KPICard title="Tempo medio" value={ticketsData?.kpis?.avgResolutionHours ? `${ticketsData.kpis.avgResolutionHours}h` : "-"} icon={Clock} loading={ticketsLoading} />
         <KPICard title="Projetos ativos" value={projectsData?.kpis?.activeProjects ?? "-"} icon={FolderKanban} loading={projectsLoading} />
         <KPICard title="Concluidos ano" value={projectsData?.kpis?.completedThisYear ?? "-"} icon={FolderCheck} loading={projectsLoading} />
@@ -31,25 +30,24 @@ export default function OverviewPage() {
         <KPICard title="Tarefas abertas" value={projectsData?.kpis?.openTasks ?? "-"} icon={ListTodo} loading={projectsLoading} />
       </div>
 
-      {/* Conteudo principal */}
-      <div className="flex-1 grid grid-cols-4 gap-2 min-h-0">
-        {/* Coluna 1-3: Graficos */}
-        <div className="col-span-3 grid grid-cols-3 grid-rows-2 gap-2 min-h-0">
-          <TicketsByStatus data={ticketsData?.byStatus} loading={ticketsLoading} />
-          <ProjectsByStatus data={projectsData?.byStatus} loading={projectsLoading} />
-          <ProjectProgress data={projectsData?.progress} loading={projectsLoading} />
-          <div className="col-span-3">
-            <TicketsTrend
-              data7={ticketsData?.trend7}
-              data30={ticketsData?.trend30}
-              data90={ticketsData?.trend90}
-              loading={ticketsLoading}
-            />
-          </div>
-        </div>
-
-        {/* Coluna 4: Lista de chamados recentes */}
+      {/* Chamados recentes - coluna direita, ocupa todas as linhas */}
+      <div className="row-span-3 min-h-0 overflow-hidden">
         <RecentTicketsList data={ticketsData?.recent} loading={ticketsLoading} />
+      </div>
+
+      {/* Graficos - linha 2 */}
+      <div className="col-span-3 grid grid-cols-2 gap-2 min-h-0 overflow-hidden">
+        <TicketsByStatus data={ticketsData?.byStatus} loading={ticketsLoading} />
+        <ProjectsByStatus data={projectsData?.byStatus} loading={projectsLoading} />
+      </div>
+
+      {/* Graficos - linha 3 */}
+      <div className="col-span-3 grid grid-cols-2 gap-2 min-h-0 overflow-hidden">
+        <ProjectProgress data={projectsData?.progress} loading={projectsLoading} />
+        <TicketsTrend
+          data={ticketsData?.trend}
+          loading={ticketsLoading}
+        />
       </div>
     </div>
   );

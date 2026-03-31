@@ -44,15 +44,30 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const view = searchParams.get("view") || "all";
+    const dateFrom = searchParams.get("dateFrom");
+    const dateTo = searchParams.get("dateTo");
 
     // Buscar chamados e usuarios em paralelo
-    const [tickets, userMap] = await Promise.all([
+    const [allTickets, userMap] = await Promise.all([
       glpiFetch<GLPITicket[]>("/Ticket", {
         range: "0-500",
         expand_dropdowns: "true",
       }),
       fetchUserMap(),
     ]);
+
+    // Filtrar por periodo se fornecido
+    let tickets = allTickets;
+    if (dateFrom || dateTo) {
+      tickets = allTickets.filter((t) => {
+        // date_creation vem como "2026-03-30 14:22:00" — comparar apenas a parte da data
+        const createdDate = t.date_creation?.split(" ")[0];
+        if (!createdDate) return false;
+        if (dateFrom && createdDate < dateFrom) return false;
+        if (dateTo && createdDate > dateTo) return false;
+        return true;
+      });
+    }
 
     if (view === "kpis") {
       return NextResponse.json(buildKPIs(tickets));
@@ -79,8 +94,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (view === "trend") {
-      const days = Number(searchParams.get("days") || "30");
-      return NextResponse.json(buildTrend(tickets, days));
+      return NextResponse.json(buildTrend(allTickets, dateFrom, dateTo));
     }
 
     if (view === "recent") {
@@ -95,9 +109,7 @@ export async function GET(request: NextRequest) {
       byType: buildByType(tickets),
       byTechnician: buildByTechnician(tickets, userMap),
       byCategory: buildByCategory(tickets),
-      trend7: buildTrend(tickets, 7),
-      trend30: buildTrend(tickets, 30),
-      trend90: buildTrend(tickets, 90),
+      trend: buildTrend(allTickets, dateFrom, dateTo),
       recent: buildRecent(tickets, userMap),
     });
   } catch (error) {
@@ -243,15 +255,37 @@ function buildByCategory(tickets: GLPITicket[]): ChartDataItem[] {
     .map(([name, value]) => ({ name, value }));
 }
 
-function buildTrend(tickets: GLPITicket[], days: number): TrendDataItem[] {
+function toLocalDateStr(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function buildTrend(
+  tickets: GLPITicket[],
+  dateFrom: string | null,
+  dateTo: string | null
+): TrendDataItem[] {
   const now = new Date();
-  const startDate = new Date(now);
-  startDate.setDate(startDate.getDate() - days);
+  let startDate: Date;
+  let endDate: Date = now;
+
+  if (dateFrom) {
+    startDate = new Date(dateFrom + "T00:00:00");
+  } else {
+    // Sem filtro: ultimos 30 dias
+    startDate = new Date(now);
+    startDate.setDate(startDate.getDate() - 30);
+  }
+  if (dateTo) {
+    endDate = new Date(dateTo + "T23:59:59");
+  }
 
   const dateMap: Record<string, { opened: number; closed: number }> = {};
 
-  for (let d = new Date(startDate); d <= now; d.setDate(d.getDate() + 1)) {
-    const key = d.toISOString().split("T")[0];
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+    const key = toLocalDateStr(d);
     dateMap[key] = { opened: 0, closed: 0 };
   }
 
@@ -269,7 +303,7 @@ function buildTrend(tickets: GLPITicket[], days: number): TrendDataItem[] {
   return Object.entries(dateMap)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, data]) => ({
-      date: new Date(date).toLocaleDateString("pt-BR", {
+      date: new Date(date + "T00:00:00").toLocaleDateString("pt-BR", {
         day: "2-digit",
         month: "2-digit",
       }),
