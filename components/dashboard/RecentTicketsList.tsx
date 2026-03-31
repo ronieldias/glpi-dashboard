@@ -41,10 +41,10 @@ export function RecentTicketsList({ data, loading }: RecentTicketsListProps) {
   if (loading || !data) {
     return (
       <Card className="h-full flex flex-col">
-        <CardHeader className="pb-0.5 pt-1.5 px-3">
+        <CardHeader className="pb-0.5 pt-1.5 px-3 flex-shrink-0">
           <CardTitle className="text-xs">Chamados Recentes</CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 px-3 pb-2">
+        <CardContent className="flex-1 min-h-0 px-3 pb-2">
           <div className="space-y-2">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-10 w-full" />
@@ -57,7 +57,7 @@ export function RecentTicketsList({ data, loading }: RecentTicketsListProps) {
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="pb-0.5 pt-1.5 px-3">
+      <CardHeader className="pb-0.5 pt-1.5 px-3 flex-shrink-0">
         <CardTitle className="text-xs flex items-center gap-2">
           Chamados Recentes
           <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-glpi-primary text-[8px] text-white font-bold">
@@ -65,7 +65,7 @@ export function RecentTicketsList({ data, loading }: RecentTicketsListProps) {
           </span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 overflow-auto px-2 pb-2">
+      <CardContent className="flex-1 min-h-0 overflow-auto px-2 pb-2">
         <div className="space-y-1">
           {data.map((ticket, index) => (
             <div

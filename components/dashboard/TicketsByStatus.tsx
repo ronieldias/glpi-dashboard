@@ -21,10 +21,10 @@ export function TicketsByStatus({ data, loading }: TicketsByStatusProps) {
   if (loading || !data) {
     return (
       <Card className="h-full flex flex-col">
-        <CardHeader className="pb-0.5 pt-1.5 px-3">
+        <CardHeader className="pb-0.5 pt-1.5 px-3 flex-shrink-0">
           <CardTitle className="text-xs">Status dos Chamados</CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 px-3 pb-2">
+        <CardContent className="flex-1 min-h-0 px-3 pb-2">
           <Skeleton className="h-full w-full" />
         </CardContent>
       </Card>
@@ -35,10 +35,10 @@ export function TicketsByStatus({ data, loading }: TicketsByStatusProps) {
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="pb-0.5 pt-1.5 px-3">
+      <CardHeader className="pb-0.5 pt-1.5 px-3 flex-shrink-0">
         <CardTitle className="text-xs">Status dos Chamados</CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 px-1 pb-2">
+      <CardContent className="flex-1 min-h-0 px-1 pb-2">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -58,7 +58,7 @@ export function TicketsByStatus({ data, loading }: TicketsByStatusProps) {
             <Tooltip formatter={(value: number) => [`${value} (${Math.round(value/total*100)}%)`, ""]} contentStyle={{ backgroundColor: "var(--color-card)", border: "1px solid var(--color-border)", color: "var(--color-card-fg)" }} />
             <Legend
               iconSize={8}
-              wrapperStyle={{ fontSize: "10px" }}
+              wrapperStyle={{ fontSize: "9px" }}
               formatter={(value: string) => {
                 const item = data.find((d) => d.name === value);
                 return `${value}: ${item?.value || 0}`;

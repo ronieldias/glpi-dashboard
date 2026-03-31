@@ -21,10 +21,10 @@ export function ProjectTasksSummary({ data, loading }: ProjectTasksSummaryProps)
   if (loading) {
     return (
       <Card className="h-full flex flex-col">
-        <CardHeader className="pb-0.5 pt-1.5 px-3">
+        <CardHeader className="pb-0.5 pt-1.5 px-3 flex-shrink-0">
           <CardTitle className="text-xs">Tarefas por Status</CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 px-3 pb-2">
+        <CardContent className="flex-1 min-h-0 px-3 pb-2">
           <Skeleton className="h-full w-full" />
         </CardContent>
       </Card>
@@ -34,10 +34,10 @@ export function ProjectTasksSummary({ data, loading }: ProjectTasksSummaryProps)
   if (!data || data.length === 0) {
     return (
       <Card className="h-full flex flex-col">
-        <CardHeader className="pb-0.5 pt-1.5 px-3">
+        <CardHeader className="pb-0.5 pt-1.5 px-3 flex-shrink-0">
           <CardTitle className="text-xs">Tarefas por Status</CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 flex items-center justify-center px-3 pb-2">
+        <CardContent className="flex-1 min-h-0 flex items-center justify-center px-3 pb-2">
           <p className="text-[10px] text-muted-foreground">Nenhuma tarefa encontrada</p>
         </CardContent>
       </Card>
@@ -48,10 +48,10 @@ export function ProjectTasksSummary({ data, loading }: ProjectTasksSummaryProps)
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="pb-0.5 pt-1.5 px-3">
+      <CardHeader className="pb-0.5 pt-1.5 px-3 flex-shrink-0">
         <CardTitle className="text-xs">Tarefas por Status</CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 px-1 pb-2">
+      <CardContent className="flex-1 min-h-0 px-1 pb-2">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -74,7 +74,7 @@ export function ProjectTasksSummary({ data, loading }: ProjectTasksSummaryProps)
             />
             <Legend
               iconSize={8}
-              wrapperStyle={{ fontSize: "10px" }}
+              wrapperStyle={{ fontSize: "9px" }}
               formatter={(value: string) => {
                 const item = data.find((d) => d.name === value);
                 return `${value}: ${item?.value || 0}`;

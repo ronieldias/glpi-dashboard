@@ -22,10 +22,10 @@ export function TicketsByCategory({ data, loading }: TicketsByCategoryProps) {
   if (loading || !data) {
     return (
       <Card className="h-full flex flex-col">
-        <CardHeader className="pb-0.5 pt-1.5 px-3">
+        <CardHeader className="pb-0.5 pt-1.5 px-3 flex-shrink-0">
           <CardTitle className="text-xs">Top 10 Categorias</CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 px-3 pb-2">
+        <CardContent className="flex-1 min-h-0 px-3 pb-2">
           <Skeleton className="h-full w-full" />
         </CardContent>
       </Card>
@@ -40,15 +40,15 @@ export function TicketsByCategory({ data, loading }: TicketsByCategoryProps) {
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="pb-0.5 pt-1.5 px-3">
+      <CardHeader className="pb-0.5 pt-1.5 px-3 flex-shrink-0">
         <CardTitle className="text-xs">Top 10 Categorias</CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 px-1 pb-2">
+      <CardContent className="flex-1 min-h-0 px-1 pb-2">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={truncated} layout="vertical" margin={{ left: 10, right: 10 }}>
+          <BarChart data={truncated} layout="vertical" margin={{ left: 0, right: 10, top: 5, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-chart-grid)" />
-            <XAxis type="number" fontSize={10} tick={{ fill: "var(--color-chart-text)" }} />
-            <YAxis type="category" dataKey="name" width={110} fontSize={9} tick={{ fill: "var(--color-chart-text)" }} />
+            <XAxis type="number" fontSize={9} tick={{ fill: "var(--color-chart-text)" }} />
+            <YAxis type="category" dataKey="name" width={85} fontSize={8} tick={{ fill: "var(--color-chart-text)" }} interval={0} />
             <Tooltip
               formatter={(value: number) => [value, "Chamados"]}
               labelFormatter={(label) => {
