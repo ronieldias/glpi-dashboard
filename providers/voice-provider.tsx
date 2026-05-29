@@ -17,8 +17,6 @@ interface VoiceContextValue {
   speak: (text: string, voiceOverride?: string) => void;
   /** Para imediatamente o áudio atual e limpa a fila. */
   stop: () => void;
-  voiceName: string;
-  setVoiceName: (name: string) => void;
 }
 
 const VoiceContext = createContext<VoiceContextValue | null>(null);
@@ -30,7 +28,6 @@ export function useVoice(): VoiceContextValue {
 }
 
 const STORAGE_KEY = "glpi-voice";
-const VOICE_KEY = "glpi-voice-name";
 const SILENT_WAV =
   "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
 
@@ -41,11 +38,9 @@ interface QueueItem {
 
 export function VoiceProvider({ children }: { children: ReactNode }) {
   const [enabled, setEnabled] = useState(false);
-  const [voiceName, setVoiceNameState] = useState("");
   const queueRef = useRef<QueueItem[]>([]);
   const playingRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  // Resolve a espera do áudio em andamento — permite interromper (stop).
   const endCurrentRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
@@ -54,10 +49,9 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (localStorage.getItem(STORAGE_KEY) === "1") setEnabled(true);
-    const savedVoice = localStorage.getItem(VOICE_KEY);
-    if (savedVoice) setVoiceNameState(savedVoice);
+    if (typeof window !== "undefined" && localStorage.getItem(STORAGE_KEY) === "1") {
+      setEnabled(true);
+    }
   }, []);
 
   const playNext = useCallback(async () => {
@@ -79,7 +73,6 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       } else {
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
-        // garante que nada esteja tocando antes de iniciar o próximo
         audio.pause();
         audio.src = url;
         await new Promise<void>((resolve) => {
@@ -93,7 +86,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
             URL.revokeObjectURL(url);
             resolve();
           };
-          endCurrentRef.current = done; // stop() pode chamar para interromper
+          endCurrentRef.current = done;
           audio.onended = done;
           audio.onerror = done;
           audio.play().catch((err) => {
@@ -117,26 +110,21 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   const stop = useCallback(() => {
     queueRef.current = [];
     audioRef.current?.pause();
-    endCurrentRef.current?.(); // resolve a espera atual (libera o player)
+    endCurrentRef.current?.();
   }, []);
 
   const speak = useCallback(
     (text: string, voiceOverride?: string) => {
       const clean = (text ?? "").trim();
       if (!clean) return;
-      queueRef.current.push({ text: clean, voice: voiceOverride ?? voiceName });
+      queueRef.current.push({ text: clean, voice: voiceOverride });
       if (queueRef.current.length > 6) {
         queueRef.current = queueRef.current.slice(-6);
       }
       void playNext();
     },
-    [playNext, voiceName],
+    [playNext],
   );
-
-  const setVoiceName = useCallback((name: string) => {
-    setVoiceNameState(name);
-    if (typeof window !== "undefined") localStorage.setItem(VOICE_KEY, name);
-  }, []);
 
   const toggle = useCallback(() => {
     setEnabled((prev) => {
@@ -150,7 +138,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
           audio.src = SILENT_WAV;
           audio.play().catch(() => {});
         }
-        queueRef.current.push({ text: "Voz ativada", voice: voiceName });
+        queueRef.current.push({ text: "Voz ativada" });
         void playNext();
       } else {
         queueRef.current = [];
@@ -159,12 +147,10 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       }
       return next;
     });
-  }, [playNext, voiceName]);
+  }, [playNext]);
 
   return (
-    <VoiceContext.Provider
-      value={{ enabled, toggle, speak, stop, voiceName, setVoiceName }}
-    >
+    <VoiceContext.Provider value={{ enabled, toggle, speak, stop }}>
       {children}
     </VoiceContext.Provider>
   );
