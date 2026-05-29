@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { VoiceControls } from "@/components/voice/VoiceControls";
 
 const TITLES: Record<string, string> = {
   "/tv/overview": "Visão geral",
@@ -64,8 +65,9 @@ export function TVHeader() {
         </nav>
       </div>
 
-      {/* Direita: data + relógio em tipografia tabular */}
+      {/* Direita: voz + data + relógio em tipografia tabular */}
       <div className="flex items-center gap-4">
+        <VoiceControls />
         {now && (
           <>
             <span className="text-xs uppercase tracking-wide text-zinc-500">

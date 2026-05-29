@@ -25,6 +25,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
+import { VoiceControls } from "@/components/voice/VoiceControls";
 import { cn } from "@/lib/utils";
 
 const pageTitles: Record<string, string> = {
@@ -217,6 +218,8 @@ export function Header({ onMenuToggle }: HeaderProps) {
             {refreshing ? "Atualizando…" : "Atualizar dados"}
           </TooltipContent>
         </Tooltip>
+
+        <VoiceControls />
 
         <Separator orientation="vertical" className="mx-1 h-4 bg-white/10" />
 

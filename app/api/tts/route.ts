@@ -21,12 +21,16 @@ export async function POST(request: NextRequest) {
   }
 
   let text = "";
+  let voice = VOICE;
   try {
     const body = await request.json();
     text = String(body?.text ?? "")
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, 500);
+    // voz escolhida pelo cliente — só aceita pt-BR (evita input arbitrário)
+    const requested = String(body?.voice ?? "").trim();
+    if (/^pt-BR-[A-Za-z0-9-]+$/.test(requested)) voice = requested;
   } catch {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
@@ -34,7 +38,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Texto vazio" }, { status: 400 });
   }
 
-  const cacheKey = `${VOICE}::${text}`;
+  const cacheKey = `${voice}::${text}`;
   const cached = cache.get(cacheKey);
   if (cached) return audioResponse(cached);
 
@@ -44,7 +48,7 @@ export async function POST(request: NextRequest) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         input: { text },
-        voice: { languageCode: "pt-BR", name: VOICE },
+        voice: { languageCode: "pt-BR", name: voice },
         audioConfig: { audioEncoding: "MP3" },
       }),
     });
