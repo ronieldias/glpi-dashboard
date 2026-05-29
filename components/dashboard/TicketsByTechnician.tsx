@@ -1,16 +1,10 @@
 "use client";
 
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { Crown } from "lucide-react";
 import type { ChartDataItem } from "@/types/glpi";
 
 interface TicketsByTechnicianProps {
@@ -18,48 +12,222 @@ interface TicketsByTechnicianProps {
   loading?: boolean;
 }
 
-export function TicketsByTechnician({ data, loading }: TicketsByTechnicianProps) {
+const PAGE_SIZE = 5;
+const ROTATION_MS = 5000;
+
+/**
+ * Ranking de técnicos em leaderboard compacto com paginação automática.
+ *
+ * Cada técnico ocupa UMA linha de altura uniforme — posição, nome, barra de
+ * proporção e valor lado a lado — para caber inteiro mesmo em slots baixos do
+ * dashboard. O líder (#1) recebe destaque sutil (coroa + cor âmbar) sem mudar
+ * a altura da linha, evitando o card gigante que estourava o card e escondia
+ * as demais posições.
+ *
+ * Conta tickets HISTÓRICOS (inclusive fechados). Para carga atual em aberto,
+ * use o widget "Carga atual por técnico".
+ */
+export function TicketsByTechnician({
+  data,
+  loading,
+}: TicketsByTechnicianProps) {
+  const [pageIndex, setPageIndex] = useState(0);
+
+  const totalPages = data ? Math.max(1, Math.ceil(data.length / PAGE_SIZE)) : 1;
+  const needsRotation = totalPages > 1;
+
+  useEffect(() => {
+    if (!needsRotation) return;
+    const id = setInterval(() => {
+      setPageIndex((p) => (p + 1) % totalPages);
+    }, ROTATION_MS);
+    return () => clearInterval(id);
+  }, [needsRotation, totalPages]);
+
+  useEffect(() => {
+    setPageIndex(0);
+  }, [data?.length]);
+
+  useEffect(() => {
+    if (pageIndex >= totalPages) setPageIndex(0);
+  }, [pageIndex, totalPages]);
+
+  const pageData = useMemo(() => {
+    if (!data) return [];
+    const start = pageIndex * PAGE_SIZE;
+    return data.slice(start, start + PAGE_SIZE);
+  }, [data, pageIndex]);
+
   if (loading || !data) {
     return (
       <Card className="h-full flex flex-col">
-        <CardHeader className="pb-0.5 pt-1.5 px-3 flex-shrink-0">
-          <CardTitle className="text-xs">Ranking por Tecnico</CardTitle>
+        <CardHeader className="pb-1 pt-2 px-3 flex-shrink-0">
+          <CardTitle className="text-xs">Ranking por Técnico</CardTitle>
         </CardHeader>
-        <CardContent className="flex-1 min-h-0 px-3 pb-2">
-          <Skeleton className="h-full w-full" />
+        <CardContent className="flex-1 min-h-0 px-3 pb-2 space-y-2">
+          {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Skeleton className="h-3 w-6" />
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-2 flex-1 rounded-full" />
+              <Skeleton className="h-4 w-8" />
+            </div>
+          ))}
         </CardContent>
       </Card>
     );
   }
 
-  const truncated = data.map((d) => ({
-    ...d,
-    name: d.name.length > 18 ? d.name.slice(0, 16) + "..." : d.name,
-    fullName: d.name,
-  }));
+  if (data.length === 0) {
+    return (
+      <Card className="h-full flex flex-col">
+        <CardHeader className="pb-1 pt-2 px-3 flex-shrink-0">
+          <CardTitle className="text-xs">Ranking por Técnico</CardTitle>
+        </CardHeader>
+        <CardContent className="flex-1 min-h-0 flex items-center justify-center px-3 pb-2">
+          <p className="text-[10px] text-muted-foreground">
+            Sem dados de técnico
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const max = Math.max(...data.map((d) => d.value)) || 1;
+  const total = data.reduce((s, d) => s + d.value, 0);
+  const startPosition = pageIndex * PAGE_SIZE;
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="pb-0.5 pt-1.5 px-3 flex-shrink-0">
-        <CardTitle className="text-xs">Ranking por Tecnico</CardTitle>
+      <CardHeader className="pb-1 pt-2 px-3 flex-shrink-0 flex flex-row items-baseline justify-between gap-2">
+        <CardTitle className="text-xs">Ranking por Técnico</CardTitle>
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground tabular-nums">
+          {total.toLocaleString("pt-BR")} · histórico
+        </span>
       </CardHeader>
-      <CardContent className="flex-1 min-h-0 px-1 pb-2">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={truncated} layout="vertical" margin={{ left: 0, right: 10, top: 5, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-chart-grid)" />
-            <XAxis type="number" fontSize={9} tick={{ fill: "var(--color-chart-text)" }} />
-            <YAxis type="category" dataKey="name" width={80} fontSize={8} tick={{ fill: "var(--color-chart-text)" }} interval={0} />
-            <Tooltip
-              labelFormatter={(label) => {
-                const item = truncated.find((d) => d.name === label);
-                return item?.fullName || label;
-              }}
-              contentStyle={{ backgroundColor: "var(--color-card)", border: "1px solid var(--color-border)", color: "var(--color-card-fg)" }}
-            />
-            <Bar dataKey="value" name="Chamados" fill="#AEC43B" radius={[0, 3, 3, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+
+      {/* Barra de progresso da rotação (só aparece se paginando) */}
+      {needsRotation && (
+        <div className="relative h-0.5 w-full bg-progress-track overflow-hidden flex-shrink-0">
+          <div
+            key={pageIndex}
+            className="absolute inset-y-0 left-0 bg-glpi-primary tv-rotation-fill"
+          />
+        </div>
+      )}
+
+      <CardContent className="flex-1 min-h-0 flex flex-col overflow-hidden px-3 pb-2 gap-1">
+        <ol key={pageIndex} className="flex-1 min-h-0 flex flex-col justify-around">
+          {pageData.map((row, idx) => {
+            const position = startPosition + idx + 1;
+            return (
+              <RankRow
+                key={row.name + position}
+                position={position}
+                name={row.name}
+                value={row.value}
+                max={max}
+                staggerDelay={idx * 80}
+              />
+            );
+          })}
+        </ol>
+
+        {/* Dots de paginação (só se paginando) */}
+        {needsRotation && (
+          <div
+            className="flex shrink-0 items-center justify-center gap-1.5 pt-0.5"
+            role="tablist"
+            aria-label="Paginação do ranking"
+          >
+            {Array.from({ length: totalPages }).map((_, i) => (
+              <span
+                key={i}
+                role="tab"
+                aria-selected={i === pageIndex}
+                className={cn(
+                  "h-1.5 rounded-full transition-all duration-500",
+                  i === pageIndex
+                    ? "w-4 bg-glpi-primary"
+                    : "w-1.5 bg-muted-foreground/30",
+                )}
+              />
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
+  );
+}
+
+interface RankRowProps {
+  position: number;
+  name: string;
+  value: number;
+  max: number;
+  staggerDelay?: number;
+}
+
+function RankRow({ position, name, value, max, staggerDelay = 0 }: RankRowProps) {
+  const pct = (value / max) * 100;
+  const isLeader = position === 1;
+
+  return (
+    <li
+      style={{ animationDelay: `${staggerDelay}ms` }}
+      className={cn(
+        "tv-row-slide-in group flex items-center gap-2 rounded py-0.5 px-1 transition-colors hover:bg-muted/40",
+      )}
+    >
+      {/* Posição (+ coroa para o líder) */}
+      <div className="flex w-6 flex-shrink-0 items-center justify-end gap-0.5">
+        {isLeader && <Crown className="h-3 w-3 text-amber-500" aria-hidden />}
+        <span
+          className={cn(
+            "text-right font-mono text-[11px] tabular-nums",
+            isLeader ? "font-bold text-amber-500" : "text-muted-foreground",
+          )}
+        >
+          {position}
+        </span>
+      </div>
+
+      {/* Nome */}
+      <span
+        className={cn(
+          "w-24 flex-shrink-0 truncate text-[11px]",
+          isLeader ? "font-semibold text-amber-500" : "font-medium text-card-foreground",
+        )}
+        title={name}
+      >
+        {name}
+      </span>
+
+      {/* Barra de proporção (ocupa o espaço restante) */}
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-progress-track">
+        <div
+          style={{
+            animationDelay: `${staggerDelay + 100}ms`,
+            ["--bar-width" as string]: `${pct}%`,
+          }}
+          className={cn(
+            "h-full rounded-full tv-bar-fill",
+            isLeader
+              ? "bg-gradient-to-r from-amber-500 to-amber-400"
+              : "bg-glpi-primary",
+          )}
+        />
+      </div>
+
+      {/* Valor */}
+      <span
+        className={cn(
+          "w-9 flex-shrink-0 text-right font-mono text-sm font-bold tabular-nums",
+          isLeader ? "text-amber-500" : "text-card-foreground",
+        )}
+      >
+        {value}
+      </span>
+    </li>
   );
 }

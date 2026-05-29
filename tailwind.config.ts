@@ -12,9 +12,9 @@ const config: Config = {
     extend: {
       colors: {
         glpi: {
-          primary: "#AEC43B",
-          "primary-dark": "#8C9E33",
-          "primary-light": "#C4D65A",
+          primary: "#10B981",
+          "primary-dark": "#059669",
+          "primary-light": "#34D399",
           text: "var(--color-text)",
           bg: "var(--color-bg)",
           dark: "var(--color-header)",

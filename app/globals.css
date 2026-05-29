@@ -26,25 +26,27 @@
   }
 
   .dark {
-    --color-bg: #0d1017;
-    --color-card: #151922;
-    --color-card-fg: #e5e7eb;
-    --color-text: #c9cdd3;
-    --color-text-muted: #8b929e;
-    --color-text-faint: #5c6370;
-    --color-border: #1e2433;
-    --color-header: #0a0d13;
-    --color-header-border: #1e2433;
-    --color-skeleton: #1e2433;
+    /* Paleta Zinc do Tailwind — cinzas neutros puros (sem tom azulado).
+     * Estilo Linear / Vercel / shadcn dark. */
+    --color-bg: #0a0a0a;          /* zinc-950 */
+    --color-card: #18181b;        /* zinc-900 */
+    --color-card-fg: #fafafa;     /* zinc-50 */
+    --color-text: #e4e4e7;        /* zinc-200 */
+    --color-text-muted: #a1a1aa;  /* zinc-400 */
+    --color-text-faint: #71717a;  /* zinc-500 */
+    --color-border: #27272a;      /* zinc-800 */
+    --color-header: #09090b;      /* zinc-950 darker */
+    --color-header-border: #27272a;
+    --color-skeleton: #27272a;
     --color-hover: rgba(255, 255, 255, 0.05);
     --color-table-hover: rgba(255, 255, 255, 0.03);
-    --color-input-bg: #1a1e2a;
-    --color-tabs-bg: #1a1e2a;
-    --color-tabs-active: #242a38;
-    --color-scrollbar: #2a3040;
-    --color-chart-text: #9ca3af;
-    --color-chart-grid: #1e2433;
-    --color-progress-track: #1e2433;
+    --color-input-bg: #18181b;
+    --color-tabs-bg: #18181b;
+    --color-tabs-active: #27272a;
+    --color-scrollbar: #3f3f46;   /* zinc-700 */
+    --color-chart-text: #a1a1aa;
+    --color-chart-grid: #27272a;
+    --color-progress-track: #27272a;
   }
 
   * {
@@ -67,10 +69,27 @@
   }
 }
 
+/* Respeita usuários (e TVs) que preferem menos movimento: as animações deste
+ * dashboard são decorativas (entrada de linhas, preenchimento de barras), então
+ * colapsamos para o estado final imediatamente em vez de removê-las — assim o
+ * conteúdo aparece completo, sem flashes nem linhas presas em opacity 0. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @keyframes pulse-once {
-  0% { background-color: rgba(174, 196, 59, 0.15); }
-  50% { background-color: rgba(174, 196, 59, 0.3); }
-  100% { background-color: rgba(174, 196, 59, 0.08); }
+  0% { background-color: rgba(16, 185, 129, 0.15); }
+  50% { background-color: rgba(16, 185, 129, 0.3); }
+  100% { background-color: rgba(16, 185, 129, 0.08); }
 }
 
 .animate-pulse-once {
@@ -95,4 +114,124 @@
   animation: ticket-leave 300ms ease-in both;
   overflow: hidden;
   pointer-events: none;
+}
+
+/* ───────────────────────────── Modo TV ───────────────────────────── */
+
+/* Background neutro estilo Linear/Apple: sólido, sem gradientes coloridos
+ * distrativos. A "vida" da tela vem do conteúdo, não do background. */
+.tv-shell-bg {
+  background-color: #08090c;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(255,255,255,0.025) 1px, transparent 0);
+  background-size: 32px 32px;
+}
+
+/* Indicador "ao vivo": ponto verde pulsando */
+@keyframes tv-live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+.tv-live-dot {
+  animation: tv-live-pulse 1.6s ease-in-out infinite;
+}
+
+/* Entrada de cards (delay-staggered via inline style) */
+@keyframes tv-card-enter {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.tv-card-enter {
+  animation: tv-card-enter 400ms ease-out both;
+}
+
+/* Critical glow: anel pulsante em torno de cards críticos */
+@keyframes tv-critical-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  50% { box-shadow: 0 0 32px 4px rgba(239, 68, 68, 0.25); }
+}
+.tv-critical-glow {
+  animation: tv-critical-glow 2.4s ease-in-out infinite;
+}
+
+/* Barra de progresso da rotação automática (Ranking por Técnico em TV).
+ * Enche de 0% a 100% em 5s para indicar quando vira de página. */
+@keyframes tv-rotation-fill {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+.tv-rotation-fill {
+  animation: tv-rotation-fill 5s linear forwards;
+}
+
+/* Fade-in suave quando troca de página (key change remount) */
+@keyframes tv-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.tv-fade-in {
+  animation: tv-fade-in 400ms ease-out both;
+}
+
+/* Slide + fade para cada linha do leaderboard quando vira de página.
+ * Use junto com `animation-delay` inline (escalonando por idx) para criar
+ * efeito "stagger" — cada linha aterrissando 80ms depois da anterior. */
+@keyframes tv-row-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.tv-row-slide-in {
+  animation: tv-row-slide-in 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Barra de proporção crescendo da esquerda para a direita. Combina com o
+ * stagger das linhas — cada barra começa a encher logo depois da linha
+ * aterrissar, criando efeito cascata. Usa CSS var `--bar-width` definida
+ * inline pelo componente. */
+@keyframes tv-bar-fill {
+  from { width: 0%; }
+  to { width: var(--bar-width, 100%); }
+}
+.tv-bar-fill {
+  animation: tv-bar-fill 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  width: var(--bar-width, 0%);
+}
+
+/* Barra-de-saída (linha anterior some pra esquerda) — não usada hoje no
+ * componente porque o `key` change remonta, mas fica disponível pra futuros
+ * componentes que mantêm DOM. */
+@keyframes tv-row-slide-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+.tv-row-slide-out {
+  animation: tv-row-slide-out 350ms cubic-bezier(0.7, 0, 0.84, 0) both;
+}
+
+/* Slide vertical de cima — usado pra diferenciar visualmente o CurrentLoad
+ * (carga atual) do Ranking (que usa slide horizontal). */
+@keyframes tv-row-slide-from-top {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.tv-row-slide-from-top {
+  animation: tv-row-slide-from-top 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }

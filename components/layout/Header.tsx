@@ -1,12 +1,31 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { RefreshCw, Menu, Sun, Moon, Filter, X, Calendar, Pencil, Save, XCircle } from "lucide-react";
+import {
+  RefreshCw,
+  Menu,
+  Sun,
+  Moon,
+  Filter,
+  X,
+  Calendar,
+  Pencil,
+  Save,
+  XCircle,
+} from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, useRef, useEffect } from "react";
 import { useTheme } from "@/hooks/useTheme";
 import { useFilter } from "@/hooks/useFilter";
 import { useDashboardLayout } from "@/hooks/useDashboardLayout";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Overview",
@@ -23,8 +42,10 @@ export function Header({ onMenuToggle }: HeaderProps) {
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
   const { theme, toggleTheme } = useTheme();
-  const { filter, setPreset, setCustomRange, clearFilter, filterLabel } = useFilter();
-  const { editMode, enterEditMode, saveEdits, cancelEdits } = useDashboardLayout();
+  const { filter, setPreset, setCustomRange, clearFilter, filterLabel } =
+    useFilter();
+  const { editMode, enterEditMode, saveEdits, cancelEdits } =
+    useDashboardLayout();
   const [filterOpen, setFilterOpen] = useState(false);
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
@@ -57,7 +78,6 @@ export function Header({ onMenuToggle }: HeaderProps) {
     setFilterOpen(false);
   };
 
-  // Fechar ao clicar fora
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
@@ -66,20 +86,24 @@ export function Header({ onMenuToggle }: HeaderProps) {
     }
     if (filterOpen) {
       document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [filterOpen]);
 
   return (
-    <header className="sticky top-0 z-30 flex h-12 items-center justify-between border-b border-header-border bg-glpi-dark px-4">
+    <header className="sticky top-0 z-30 flex h-12 items-center justify-between border-b border-white/10 bg-glpi-dark px-4">
       <div className="flex items-center gap-3">
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={onMenuToggle}
-          className="rounded p-1 hover:bg-white/10"
-          title="Menu"
+          aria-label="Menu"
+          className="text-glpi-primary hover:bg-white/10"
         >
-          <Menu className="h-5 w-5 text-glpi-primary" />
-        </button>
+          <Menu />
+        </Button>
+
         <img
           src="/logo-branca.png"
           alt="GLPI Dashboard"
@@ -87,175 +111,261 @@ export function Header({ onMenuToggle }: HeaderProps) {
           height={28}
           className="h-6 w-auto"
         />
-        <div className="h-4 w-px bg-gray-600" />
+
+        <Separator orientation="vertical" className="h-4 bg-white/10" />
+
         <h2 className="text-sm font-semibold text-white">{title}</h2>
 
-        {/* Badge do filtro ativo */}
         {filterLabel && (
-          <div className="flex items-center gap-1 rounded bg-glpi-primary/20 px-2 py-0.5">
-            <Calendar className="h-3 w-3 text-glpi-primary" />
-            <span className="text-[10px] font-medium text-glpi-primary">{filterLabel}</span>
-            <button
-              onClick={handleClear}
-              className="ml-0.5 rounded-full p-0.5 hover:bg-white/10"
-              title="Limpar filtro"
-            >
-              <X className="h-2.5 w-2.5 text-glpi-primary" />
-            </button>
-          </div>
+          <FilterBadge label={filterLabel} onClear={handleClear} />
         )}
 
-        {/* Edit mode indicator */}
         {editMode && (
-          <div className="flex items-center gap-1 rounded bg-amber-500/20 px-2 py-0.5">
-            <Pencil className="h-3 w-3 text-amber-400" />
-            <span className="text-[10px] font-medium text-amber-400">Modo edição</span>
-          </div>
+          <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-400">
+            <Pencil className="h-2.5 w-2.5" />
+            Modo edição
+          </span>
         )}
       </div>
 
-      <div className="flex items-center gap-3">
-        {/* Botao de filtro */}
+      <div className="flex items-center gap-1.5">
+        {/* Botão de filtro: texto+ícone porque tem dropdown */}
         {!editMode && (
           <div className="relative" ref={filterRef}>
-            <button
+            <Button
+              variant={filter.preset ? "outline" : "secondary"}
               onClick={() => setFilterOpen((o) => !o)}
-              className={`flex items-center gap-1.5 rounded border px-2 py-1 text-xs transition-colors ${
-                filter.preset
-                  ? "border-glpi-primary bg-glpi-primary/10 text-glpi-primary"
-                  : "border-gray-600 text-gray-300 hover:bg-white/10 hover:text-white"
-              }`}
-              title="Filtrar por periodo"
+              aria-haspopup="dialog"
+              aria-expanded={filterOpen}
             >
-              <Filter className="h-3 w-3" />
+              <Filter />
               Filtro
-            </button>
+            </Button>
 
-            {/* Dropdown de filtros */}
             {filterOpen && (
-              <div className="absolute right-0 top-full mt-1 w-72 rounded border bg-card shadow-xl z-50 overflow-hidden">
-                <div className="border-b p-3">
-                  <p className="text-xs font-semibold text-card-foreground">Filtrar por periodo</p>
-                </div>
-
-                {/* Presets */}
-                <div className="grid grid-cols-2 gap-1.5 p-3">
-                  {(["day", "week", "month", "year"] as const).map((p) => {
-                    const labels: Record<string, string> = {
-                      day: "Hoje",
-                      week: "Esta semana",
-                      month: "Este mes",
-                      year: "Este ano",
-                    };
-                    return (
-                      <button
-                        key={p}
-                        onClick={() => handlePreset(p)}
-                        className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
-                          filter.preset === p
-                            ? "bg-glpi-primary text-white"
-                            : "bg-skeleton text-card-foreground hover:bg-[var(--color-hover)]"
-                        }`}
-                      >
-                        {labels[p]}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Intervalo customizado */}
-                <div className="border-t p-3">
-                  <p className="mb-2 text-[10px] font-medium text-muted uppercase tracking-wider">Intervalo personalizado</p>
-                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
-                    <input
-                      type="date"
-                      value={customFrom}
-                      onChange={(e) => setCustomFrom(e.target.value)}
-                      className="min-w-0 rounded border bg-input-bg px-1.5 py-1 text-[11px] text-card-foreground"
-                    />
-                    <span className="text-[10px] text-muted">a</span>
-                    <input
-                      type="date"
-                      value={customTo}
-                      onChange={(e) => setCustomTo(e.target.value)}
-                      className="min-w-0 rounded border bg-input-bg px-1.5 py-1 text-[11px] text-card-foreground"
-                    />
-                  </div>
-                  <button
-                    onClick={handleApplyCustom}
-                    disabled={!customFrom || !customTo}
-                    className="mt-2 w-full rounded bg-glpi-primary px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-glpi-primary-dark disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Aplicar
-                  </button>
-                </div>
-
-                {/* Limpar */}
-                {filter.preset && (
-                  <div className="border-t p-2">
-                    <button
-                      onClick={handleClear}
-                      className="w-full rounded px-3 py-1 text-xs text-muted hover:bg-[var(--color-hover)] hover:text-card-foreground transition-colors"
-                    >
-                      Limpar filtro
-                    </button>
-                  </div>
-                )}
-              </div>
+              <FilterDropdown
+                filter={filter}
+                customFrom={customFrom}
+                customTo={customTo}
+                onCustomFromChange={setCustomFrom}
+                onCustomToChange={setCustomTo}
+                onApplyCustom={handleApplyCustom}
+                onPreset={handlePreset}
+                onClear={handleClear}
+              />
             )}
           </div>
         )}
 
-        {/* Edit mode: Save / Cancel buttons */}
+        {/* Edit mode controls */}
         {editMode ? (
           <>
-            <button
-              onClick={cancelEdits}
-              className="flex items-center gap-1.5 rounded border border-gray-600 px-2 py-1 text-xs text-gray-300 transition-colors hover:bg-red-500/20 hover:border-red-500/50 hover:text-red-400"
-              title="Cancelar alterações"
-            >
-              <XCircle className="h-3 w-3" />
+            <Button variant="destructive" onClick={cancelEdits}>
+              <XCircle />
               Cancelar
-            </button>
-            <button
-              onClick={saveEdits}
-              className="flex items-center gap-1.5 rounded border border-glpi-primary bg-glpi-primary/20 px-2 py-1 text-xs text-glpi-primary transition-colors hover:bg-glpi-primary hover:text-white"
-              title="Salvar layout"
-            >
-              <Save className="h-3 w-3" />
+            </Button>
+            <Button variant="outline" onClick={saveEdits}>
+              <Save />
               Salvar
-            </button>
+            </Button>
           </>
         ) : (
-          <button
-            onClick={enterEditMode}
-            className="flex items-center justify-center rounded border border-gray-600 p-1 text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
-            title="Editar layout"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="secondary"
+                size="icon"
+                onClick={enterEditMode}
+                aria-label="Editar layout"
+              >
+                <Pencil />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Editar layout</TooltipContent>
+          </Tooltip>
         )}
 
-        <button
-          onClick={toggleTheme}
-          className="flex items-center justify-center rounded border border-gray-600 p-1 text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
-          title={theme === "dark" ? "Tema claro" : "Tema escuro"}
-        >
-          {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-        </button>
-        <button
-          onClick={handleRefresh}
-          className="flex items-center gap-1.5 rounded border border-gray-600 px-2 py-1 text-xs text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
-          title="Atualizar dados"
-        >
-          <RefreshCw className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`} />
-          Atualizar
-        </button>
-        <div className="flex items-center gap-1.5">
-          <div className="h-1.5 w-1.5 rounded-full bg-glpi-primary" />
-          <span className="text-[10px] text-gray-400">Conectado</span>
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="secondary"
+              size="icon"
+              onClick={toggleTheme}
+              aria-label={theme === "dark" ? "Tema claro" : "Tema escuro"}
+            >
+              {theme === "dark" ? <Sun /> : <Moon />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            {theme === "dark" ? "Tema claro" : "Tema escuro"}
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="secondary"
+              size="icon"
+              onClick={handleRefresh}
+              aria-label="Atualizar dados"
+              disabled={refreshing}
+            >
+              <RefreshCw className={cn(refreshing && "animate-spin")} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            {refreshing ? "Atualizando…" : "Atualizar dados"}
+          </TooltipContent>
+        </Tooltip>
+
+        <Separator orientation="vertical" className="mx-1 h-4 bg-white/10" />
+
+        {/* Status de conexão como dot com tooltip */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label="Status da conexão"
+              className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-[10px] text-zinc-400 hover:text-white"
+            >
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              </span>
+              <span className="hidden md:inline">Online</span>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            Conectado ao GLPI · atualiza a cada 30s
+          </TooltipContent>
+        </Tooltip>
       </div>
     </header>
+  );
+}
+
+/** Badge que mostra o filtro de período ativo, com botão de fechar inline. */
+function FilterBadge({
+  label,
+  onClear,
+}: {
+  label: string;
+  onClear: () => void;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-md border border-glpi-primary/30 bg-glpi-primary/10 px-2 py-0.5 text-[10px] font-medium text-glpi-primary">
+      <Calendar className="h-2.5 w-2.5" />
+      {label}
+      <button
+        type="button"
+        onClick={onClear}
+        className="ml-0.5 rounded-full p-0.5 transition-colors hover:bg-glpi-primary/20"
+        aria-label="Limpar filtro"
+      >
+        <X className="h-2.5 w-2.5" />
+      </button>
+    </span>
+  );
+}
+
+interface FilterDropdownProps {
+  filter: { preset: string | null };
+  customFrom: string;
+  customTo: string;
+  onCustomFromChange: (v: string) => void;
+  onCustomToChange: (v: string) => void;
+  onApplyCustom: () => void;
+  onPreset: (preset: "day" | "week" | "month" | "year") => void;
+  onClear: () => void;
+}
+
+function FilterDropdown({
+  filter,
+  customFrom,
+  customTo,
+  onCustomFromChange,
+  onCustomToChange,
+  onApplyCustom,
+  onPreset,
+  onClear,
+}: FilterDropdownProps) {
+  return (
+    <div
+      role="dialog"
+      aria-label="Filtrar por período"
+      className="absolute right-0 top-full z-50 mt-1.5 w-72 overflow-hidden rounded-lg border border-border bg-card shadow-xl animate-in fade-in-0 zoom-in-95"
+    >
+      <div className="border-b border-border p-3">
+        <p className="text-xs font-semibold text-card-foreground">
+          Filtrar por período
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-1.5 p-3">
+        {(["day", "week", "month", "year"] as const).map((p) => {
+          const labels: Record<string, string> = {
+            day: "Hoje",
+            week: "Esta semana",
+            month: "Este mês",
+            year: "Este ano",
+          };
+          const isActive = filter.preset === p;
+          return (
+            <Button
+              key={p}
+              variant={isActive ? "default" : "secondary"}
+              size="sm"
+              onClick={() => onPreset(p)}
+              className="justify-center"
+            >
+              {labels[p]}
+            </Button>
+          );
+        })}
+      </div>
+
+      <div className="border-t border-border p-3">
+        <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          Intervalo personalizado
+        </p>
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
+          <input
+            type="date"
+            value={customFrom}
+            onChange={(e) => onCustomFromChange(e.target.value)}
+            className="min-w-0 rounded-md border border-border bg-input-bg px-2 py-1 text-[11px] text-card-foreground focus:border-glpi-primary focus:outline-none focus:ring-1 focus:ring-glpi-primary/30"
+          />
+          <span className="text-[10px] text-muted-foreground">→</span>
+          <input
+            type="date"
+            value={customTo}
+            onChange={(e) => onCustomToChange(e.target.value)}
+            className="min-w-0 rounded-md border border-border bg-input-bg px-2 py-1 text-[11px] text-card-foreground focus:border-glpi-primary focus:outline-none focus:ring-1 focus:ring-glpi-primary/30"
+          />
+        </div>
+        <Button
+          variant="default"
+          size="sm"
+          onClick={onApplyCustom}
+          disabled={!customFrom || !customTo}
+          className="mt-2 w-full justify-center"
+        >
+          Aplicar
+        </Button>
+      </div>
+
+      {filter.preset && (
+        <div className="border-t border-border p-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClear}
+            className="w-full justify-center"
+          >
+            Limpar filtro
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }

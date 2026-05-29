@@ -2,46 +2,57 @@ import type { WidgetInstance, PageLayout } from "@/types/widget";
 import { GRID_COLS, GRID_ROWS } from "@/types/widget";
 import { widgetMap } from "@/lib/widget-registry";
 
-const STORAGE_PREFIX = "dashboard-layout:";
+// Bump da versão invalida layouts antigos salvos no localStorage quando
+// adicionamos widgets novos ao defaultLayouts. Sem isso, usuários que já
+// tinham layout salvo nunca veriam os widgets novos.
+// Bump pra v3 invalidar layouts customizados salvos com a versão "9 KPIs poluída".
+const STORAGE_PREFIX = "dashboard-layout:v3:";
 
 // --- Default layouts replicating the current static pages ---
 
 export const defaultLayouts: Record<string, PageLayout> = {
   "/dashboard": [
-    // Row 1: 7 KPIs across cols 1-9 (each 1x1), leaving cols 10-12 for recent tickets
-    { id: "kpi-tickets-open", col: 1, row: 1, w: 1, h: 1 },
-    { id: "kpi-tickets-closed", col: 2, row: 1, w: 1, h: 1 },
-    { id: "kpi-avg-time", col: 3, row: 1, w: 1, h: 1 },
-    { id: "kpi-projects-active", col: 4, row: 1, w: 1, h: 1 },
-    { id: "kpi-projects-done", col: 5, row: 1, w: 1, h: 1 },
-    { id: "kpi-overdue", col: 6, row: 1, w: 1, h: 1 },
-    { id: "kpi-tasks-open", col: 7, row: 1, w: 1, h: 1 },
-    // Recent tickets: right column spanning all rows
-    { id: "tickets-recent", col: 10, row: 1, w: 3, h: 8 },
-    // Row 2-4: charts
-    { id: "tickets-by-status", col: 1, row: 2, w: 5, h: 3 },
-    { id: "projects-by-status", col: 6, row: 2, w: 4, h: 3 },
-    // Row 5-7: charts
-    { id: "projects-progress", col: 1, row: 5, w: 5, h: 4 },
-    { id: "tickets-trend", col: 6, row: 5, w: 4, h: 4 },
+    // Row 1: APENAS 5 KPIs operacionais essenciais (2 cols cada = legível).
+    // Cortei sla-breach, reopened, avg-time, tickets-closed que poluíam.
+    { id: "kpi-tickets-open", col: 1, row: 1, w: 2, h: 1 },
+    { id: "kpi-unassigned", col: 3, row: 1, w: 2, h: 1 },
+    { id: "kpi-oldest-open", col: 5, row: 1, w: 2, h: 1 },
+    { id: "kpi-sla-critical", col: 7, row: 1, w: 2, h: 1 },
+    { id: "kpi-sla-today", col: 9, row: 1, w: 2, h: 1 },
+    // Painel lateral direito (2 cols, 8 rows): chamados recentes
+    { id: "tickets-recent", col: 11, row: 1, w: 2, h: 8 },
+    // Row 2-4: 3 charts lado a lado
+    { id: "tickets-by-status", col: 1, row: 2, w: 4, h: 3 },
+    { id: "current-load", col: 5, row: 2, w: 3, h: 3 },
+    { id: "mttr-priority", col: 8, row: 2, w: 3, h: 3 },
+    // Row 5-6: backlog por idade
+    { id: "backlog-by-age", col: 1, row: 5, w: 10, h: 2 },
+    // Row 7-8: tendência + status projetos
+    { id: "tickets-trend", col: 1, row: 7, w: 6, h: 2 },
+    { id: "projects-by-status", col: 7, row: 7, w: 4, h: 2 },
   ],
 
   "/dashboard/tickets": [
-    // Row 1: 4 KPIs across cols 1-9
+    // Row 1: APENAS 5 KPIs acionáveis (cada com 2 cols = mais respiração visual)
+    // Cortei: sla-breach (coberto por sla-critical), reopened, avg-time, tickets-closed
+    // — informações secundárias que poluíam a primeira linha.
     { id: "kpi-tickets-open", col: 1, row: 1, w: 2, h: 1 },
-    { id: "kpi-tickets-closed", col: 3, row: 1, w: 2, h: 1 },
-    { id: "kpi-sla-breach", col: 5, row: 1, w: 2, h: 1 },
-    { id: "kpi-avg-time", col: 7, row: 1, w: 2, h: 1 },
-    // Recent tickets: right column
-    { id: "tickets-recent", col: 10, row: 1, w: 3, h: 8 },
-    // Row 2-4: 3 charts
+    { id: "kpi-unassigned", col: 3, row: 1, w: 2, h: 1 },
+    { id: "kpi-oldest-open", col: 5, row: 1, w: 2, h: 1 },
+    { id: "kpi-sla-critical", col: 7, row: 1, w: 2, h: 1 },
+    { id: "kpi-sla-today", col: 9, row: 1, w: 2, h: 1 },
+    // Painel lateral direito mais estreito (2 cols em vez de 3)
+    { id: "tickets-recent", col: 11, row: 1, w: 2, h: 8 },
+    // Row 2-4: análise central (status + prioridade + carga atual)
     { id: "tickets-by-status", col: 1, row: 2, w: 3, h: 3 },
     { id: "tickets-by-priority", col: 4, row: 2, w: 3, h: 3 },
-    { id: "tickets-sla", col: 7, row: 2, w: 3, h: 3 },
-    // Row 5-8: 3 charts
-    { id: "tickets-by-technician", col: 1, row: 5, w: 3, h: 4 },
-    { id: "tickets-by-category", col: 4, row: 5, w: 3, h: 4 },
-    { id: "tickets-trend", col: 7, row: 5, w: 3, h: 4 },
+    { id: "current-load", col: 7, row: 2, w: 4, h: 3 },
+    // Row 5-6: tendência + MTTR por prioridade
+    { id: "tickets-trend", col: 1, row: 5, w: 6, h: 2 },
+    { id: "mttr-priority", col: 7, row: 5, w: 4, h: 2 },
+    // Row 7-8: categoria + ranking histórico
+    { id: "tickets-by-category", col: 1, row: 7, w: 6, h: 2 },
+    { id: "tickets-by-technician", col: 7, row: 7, w: 4, h: 2 },
   ],
 
   "/dashboard/projects": [

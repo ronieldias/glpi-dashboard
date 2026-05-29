@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { glpiFetch } from "@/lib/glpi-client";
+import { glpiFetchAll } from "@/lib/glpi-fetch-all";
+import { getOrFetch } from "@/lib/glpi-cache";
 import type {
   GLPIProject,
   GLPIProjectTask,
@@ -8,6 +9,8 @@ import type {
   ProjectTimelineItem,
 } from "@/types/glpi";
 
+const PROJECTS_TTL_MS = 15_000;
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -15,15 +18,21 @@ export async function GET(request: NextRequest) {
     const dateFrom = searchParams.get("dateFrom");
     const dateTo = searchParams.get("dateTo");
 
+    // Paginação real + cache 15s. ProjectTask hoje tem 3 itens mas se crescer
+    // o range=0-1000 hardcoded ficaria silenciosamente errado.
     const [allProjects, allTasks] = await Promise.all([
-      glpiFetch<GLPIProject[]>("/Project", {
-        range: "0-200",
-        expand_dropdowns: "true",
-      }),
-      glpiFetch<GLPIProjectTask[]>("/ProjectTask", {
-        range: "0-1000",
-        expand_dropdowns: "true",
-      }),
+      getOrFetch("projects-all", PROJECTS_TTL_MS, () =>
+        glpiFetchAll<GLPIProject>("/Project", {
+          chunkSize: 200,
+          expandDropdowns: true,
+        }),
+      ),
+      getOrFetch("project-tasks-all", PROJECTS_TTL_MS, () =>
+        glpiFetchAll<GLPIProjectTask>("/ProjectTask", {
+          chunkSize: 500,
+          expandDropdowns: true,
+        }),
+      ),
     ]);
 
     // Filtrar por periodo se fornecido

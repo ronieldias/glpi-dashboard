@@ -13,7 +13,9 @@ export function QueryProvider({ children }: { children: ReactNode }) {
             staleTime: 1000 * 20,
             retry: 2,
             refetchOnWindowFocus: false,
-            refetchIntervalInBackground: true,
+            // Pausa polling quando a aba/TV está em background (document.hidden).
+            // Antes: true — sangrava o GLPI 24/7 mesmo com a TV desligada.
+            refetchIntervalInBackground: false,
           },
           mutations: {
             onError: (error) => {

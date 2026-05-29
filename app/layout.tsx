@@ -4,6 +4,7 @@ import "./globals.css";
 import { QueryProvider } from "@/providers/query-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { FilterProvider } from "@/providers/filter-provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -40,8 +41,10 @@ export default function RootLayout({
         <ThemeProvider>
           <FilterProvider>
             <QueryProvider>
-              {children}
-              <Toaster />
+              <TooltipProvider delayDuration={300}>
+                {children}
+                <Toaster />
+              </TooltipProvider>
             </QueryProvider>
           </FilterProvider>
         </ThemeProvider>
