@@ -11,11 +11,12 @@ import {
 } from "react";
 
 interface VoiceContextValue {
-  /** Anúncios por voz ativados pelo usuário (gesto necessário p/ autoplay). */
   enabled: boolean;
   toggle: () => void;
-  /** Enfileira um texto para ser falado (best-effort; não bloqueia). */
-  speak: (text: string) => void;
+  /** Enfileira um texto. `voiceOverride` toca com uma voz específica (preview). */
+  speak: (text: string, voiceOverride?: string) => void;
+  /** Para imediatamente o áudio atual e limpa a fila. */
+  stop: () => void;
 }
 
 const VoiceContext = createContext<VoiceContextValue | null>(null);
@@ -27,11 +28,25 @@ export function useVoice(): VoiceContextValue {
 }
 
 const STORAGE_KEY = "glpi-voice";
+const SILENT_WAV =
+  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+
+interface QueueItem {
+  text: string;
+  voice?: string;
+}
 
 export function VoiceProvider({ children }: { children: ReactNode }) {
   const [enabled, setEnabled] = useState(false);
-  const queueRef = useRef<string[]>([]);
+  const queueRef = useRef<QueueItem[]>([]);
   const playingRef = useRef(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const endCurrentRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    audioRef.current = new Audio();
+    return () => audioRef.current?.pause();
+  }, []);
 
   useEffect(() => {
     if (typeof window !== "undefined" && localStorage.getItem(STORAGE_KEY) === "1") {
@@ -39,32 +54,52 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Toca a fila em série (um áudio por vez), para os anúncios não se sobreporem.
   const playNext = useCallback(async () => {
-    if (playingRef.current) return;
-    const text = queueRef.current.shift();
-    if (!text) return;
+    const audio = audioRef.current;
+    if (!audio || playingRef.current) return;
+    const item = queueRef.current.shift();
+    if (!item) return;
 
     playingRef.current = true;
     try {
       const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text: item.text, voice: item.voice || undefined }),
       });
-      if (res.ok) {
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        console.warn(`[voz] /api/tts retornou ${res.status}:`, body.slice(0, 200));
+      } else {
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
-        const audio = new Audio(url);
-        await audio.play().catch(() => {});
+        audio.pause();
+        audio.src = url;
         await new Promise<void>((resolve) => {
-          audio.onended = () => resolve();
-          audio.onerror = () => resolve();
+          let settled = false;
+          const done = () => {
+            if (settled) return;
+            settled = true;
+            audio.onended = null;
+            audio.onerror = null;
+            endCurrentRef.current = null;
+            URL.revokeObjectURL(url);
+            resolve();
+          };
+          endCurrentRef.current = done;
+          audio.onended = done;
+          audio.onerror = done;
+          audio.play().catch((err) => {
+            console.warn(
+              "[voz] o navegador bloqueou o áudio — clique no botão de voz (🔊) para liberar.",
+              err,
+            );
+            done();
+          });
         });
-        URL.revokeObjectURL(url);
       }
-    } catch {
-      // voz é best-effort: falha de rede/áudio não deve quebrar o painel
+    } catch (err) {
+      console.warn("[voz] falha ao reproduzir:", err);
     } finally {
       playingRef.current = false;
     }
@@ -72,12 +107,17 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     if (queueRef.current.length > 0) void playNext();
   }, []);
 
+  const stop = useCallback(() => {
+    queueRef.current = [];
+    audioRef.current?.pause();
+    endCurrentRef.current?.();
+  }, []);
+
   const speak = useCallback(
-    (text: string) => {
+    (text: string, voiceOverride?: string) => {
       const clean = (text ?? "").trim();
       if (!clean) return;
-      queueRef.current.push(clean);
-      // não deixa a fila crescer indefinidamente (alertas atrasados perdem valor)
+      queueRef.current.push({ text: clean, voice: voiceOverride });
       if (queueRef.current.length > 6) {
         queueRef.current = queueRef.current.slice(-6);
       }
@@ -93,18 +133,24 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
       }
       if (next) {
-        // o clique do usuário libera o autoplay; confirma por voz
-        queueRef.current.push("Voz ativada");
+        const audio = audioRef.current;
+        if (audio) {
+          audio.src = SILENT_WAV;
+          audio.play().catch(() => {});
+        }
+        queueRef.current.push({ text: "Voz ativada" });
         void playNext();
       } else {
         queueRef.current = [];
+        audioRef.current?.pause();
+        endCurrentRef.current?.();
       }
       return next;
     });
   }, [playNext]);
 
   return (
-    <VoiceContext.Provider value={{ enabled, toggle, speak }}>
+    <VoiceContext.Provider value={{ enabled, toggle, speak, stop }}>
       {children}
     </VoiceContext.Provider>
   );

@@ -10,7 +10,9 @@ const KPI_SUMMARY_MS = 10 * 60 * 1000; // 10 min
 interface RecentLite {
   id: number;
   name: string;
+  typeLabel: string;
   priorityLabel: string;
+  recipientName: string;
   sla: string;
   slaOverdue: boolean;
 }
@@ -53,7 +55,10 @@ export function VoiceAnnouncer() {
     if (seenIds.current && enabled) {
       const novos = recent.filter((t) => !seenIds.current!.has(t.id));
       for (const t of novos.slice(0, 2)) {
-        speak(`Novo chamado, prioridade ${t.priorityLabel}: ${t.name}`);
+        speak(
+          `Novo chamado ${t.typeLabel}, prioridade ${t.priorityLabel}: ` +
+            `${t.name}. Solicitante ${t.recipientName}.`,
+        );
       }
 
       const novosVencidos = recent.filter(

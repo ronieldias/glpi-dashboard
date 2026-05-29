@@ -25,6 +25,9 @@ yarn-error.log*
 # local env files
 .env*.local
 
+# voz: padrão do painel salvo em runtime
+.voice-config.json
+
 # vercel
 .vercel
 

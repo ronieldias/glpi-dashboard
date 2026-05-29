@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getDefaultVoice, isValidVoice } from "@/lib/voice-config";
 
-// Chave e voz ficam no servidor (.env.local — fora do git).
+// Chave fica no servidor (.env.local — fora do git). A voz padrão é definida
+// nas configurações da UI (persistida no servidor), não mais por env.
 const API_KEY = process.env.GOOGLE_TTS_API_KEY;
-// Voz feminina pt-BR da geração Chirp 3 HD (a mais natural). Trocável por env
-// (ex.: pt-BR-Chirp3-HD-Kore, pt-BR-Chirp3-HD-Leda, ou pt-BR-Neural2-A).
-const VOICE = process.env.GOOGLE_TTS_VOICE || "pt-BR-Chirp3-HD-Aoede";
 const ENDPOINT = "https://texttospeech.googleapis.com/v1/text:synthesize";
 
 // Cache em memória (texto+voz -> base64 mp3): frases repetidas (alertas, resumos)
@@ -21,12 +20,14 @@ export async function POST(request: NextRequest) {
   }
 
   let text = "";
+  let requested = "";
   try {
     const body = await request.json();
     text = String(body?.text ?? "")
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, 500);
+    requested = String(body?.voice ?? "").trim();
   } catch {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
@@ -34,7 +35,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Texto vazio" }, { status: 400 });
   }
 
-  const cacheKey = `${VOICE}::${text}`;
+  // voz do request (preview) tem prioridade; senão usa o padrão salvo no painel
+  const voice = isValidVoice(requested) ? requested : await getDefaultVoice();
+  const cacheKey = `${voice}::${text}`;
   const cached = cache.get(cacheKey);
   if (cached) return audioResponse(cached);
 
@@ -44,7 +47,7 @@ export async function POST(request: NextRequest) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         input: { text },
-        voice: { languageCode: "pt-BR", name: VOICE },
+        voice: { languageCode: "pt-BR", name: voice },
         audioConfig: { audioEncoding: "MP3" },
       }),
     });
