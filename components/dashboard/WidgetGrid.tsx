@@ -32,8 +32,11 @@ export function WidgetGrid({ page }: WidgetGridProps) {
         className="h-full w-full relative"
         style={{
           display: "grid",
-          gridTemplateColumns: `repeat(${GRID_COLS}, 1fr)`,
-          gridTemplateRows: `repeat(${GRID_ROWS}, 1fr)`,
+          // minmax(0, 1fr) — e NÃO "1fr" (= minmax(auto,1fr)) — força faixas
+          // iguais. Sem o min 0, um widget com conteúdo alto estica suas linhas
+          // e deforma o grid (células ficam de tamanhos diferentes).
+          gridTemplateColumns: `repeat(${GRID_COLS}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${GRID_ROWS}, minmax(0, 1fr))`,
           gap: "0.5rem",
         }}
       >

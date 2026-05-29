@@ -9,6 +9,12 @@ import {
   CalendarClock,
   ListTodo,
   AlertTriangle,
+  Inbox,
+  ShieldAlert,
+  ShieldCheck,
+  RotateCcw,
+  Users,
+  Timer,
 } from "lucide-react";
 import type { WidgetDefinition, WidgetCategory } from "@/types/widget";
 
@@ -21,6 +27,16 @@ import { KPIProjectsDone } from "@/components/dashboard/widgets/kpi-projects-don
 import { KPIOverdue } from "@/components/dashboard/widgets/kpi-overdue";
 import { KPITasksOpen } from "@/components/dashboard/widgets/kpi-tasks-open";
 import { KPISLABreach } from "@/components/dashboard/widgets/kpi-sla-breach";
+// KPIs analíticos novos
+import { KPIUnassigned } from "@/components/dashboard/widgets/kpi-unassigned";
+import { KPIOldestOpen } from "@/components/dashboard/widgets/kpi-oldest-open";
+import { KPISLACritical } from "@/components/dashboard/widgets/kpi-sla-critical";
+import { KPISLAToday } from "@/components/dashboard/widgets/kpi-sla-today";
+import { KPIReopened } from "@/components/dashboard/widgets/kpi-reopened";
+// Widgets de análise novos
+import { WidgetCurrentLoad } from "@/components/dashboard/widgets/widget-current-load";
+import { WidgetOldestTickets } from "@/components/dashboard/widgets/widget-oldest-tickets";
+import { WidgetMttrPriority } from "@/components/dashboard/widgets/widget-mttr-priority";
 import { WidgetTicketsByStatus } from "@/components/dashboard/widgets/widget-tickets-by-status";
 import { WidgetTicketsByPriority } from "@/components/dashboard/widgets/widget-tickets-by-priority";
 import { WidgetTicketsTrend } from "@/components/dashboard/widgets/widget-tickets-trend";
@@ -135,6 +151,106 @@ export const widgetCatalog: WidgetDefinition[] = [
     maxW: 12,
     maxH: 8,
     component: KPISLABreach,
+  },
+
+  // ── KPIs analíticos novos ──────────────────────────────────────────
+  {
+    id: "kpi-unassigned",
+    title: "Fila órfã",
+    category: "tickets",
+    defaultW: 1,
+    defaultH: 1,
+    minW: 1,
+    minH: 1,
+    maxW: 12,
+    maxH: 8,
+    component: KPIUnassigned,
+  },
+  {
+    id: "kpi-oldest-open",
+    title: "Mais antigo aberto",
+    category: "tickets",
+    defaultW: 1,
+    defaultH: 1,
+    minW: 1,
+    minH: 1,
+    maxW: 12,
+    maxH: 8,
+    component: KPIOldestOpen,
+  },
+  {
+    id: "kpi-sla-critical",
+    title: "SLA vence em 2h",
+    category: "tickets",
+    defaultW: 1,
+    defaultH: 1,
+    minW: 1,
+    minH: 1,
+    maxW: 12,
+    maxH: 8,
+    component: KPISLACritical,
+  },
+  {
+    id: "kpi-sla-today",
+    title: "SLA cumprido hoje",
+    category: "tickets",
+    defaultW: 1,
+    defaultH: 1,
+    minW: 1,
+    minH: 1,
+    maxW: 12,
+    maxH: 8,
+    component: KPISLAToday,
+  },
+  {
+    id: "kpi-reopened",
+    title: "Reabertos no mês",
+    category: "tickets",
+    defaultW: 1,
+    defaultH: 1,
+    minW: 1,
+    minH: 1,
+    maxW: 12,
+    maxH: 8,
+    component: KPIReopened,
+  },
+
+  // ── Widgets de análise novos ───────────────────────────────────────
+  {
+    id: "current-load",
+    title: "Carga atual por técnico",
+    category: "tickets",
+    defaultW: 3,
+    defaultH: 3,
+    minW: 2,
+    minH: 2,
+    maxW: 12,
+    maxH: 8,
+    component: WidgetCurrentLoad,
+  },
+  {
+    id: "oldest-tickets",
+    title: "Chamados Antigos",
+    category: "tickets",
+    defaultW: 3,
+    defaultH: 3,
+    minW: 2,
+    minH: 2,
+    maxW: 12,
+    maxH: 8,
+    component: WidgetOldestTickets,
+  },
+  {
+    id: "mttr-priority",
+    title: "MTTR por prioridade",
+    category: "tickets",
+    defaultW: 3,
+    defaultH: 3,
+    minW: 2,
+    minH: 2,
+    maxW: 12,
+    maxH: 8,
+    component: WidgetMttrPriority,
   },
   {
     id: "backlog-by-age",
@@ -331,4 +447,11 @@ export const KPI_ICONS: Record<string, typeof Ticket> = {
   "kpi-overdue": CalendarClock,
   "kpi-tasks-open": ListTodo,
   "kpi-sla-breach": AlertTriangle,
+  "kpi-unassigned": Inbox,
+  "kpi-oldest-open": Timer,
+  "kpi-sla-critical": ShieldAlert,
+  "kpi-sla-today": ShieldCheck,
+  "kpi-reopened": RotateCcw,
+  "current-load": Users,
+  "mttr-priority": Clock,
 };

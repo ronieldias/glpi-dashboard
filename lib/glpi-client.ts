@@ -33,10 +33,14 @@ async function ensureSession(): Promise<string> {
   return sessionToken;
 }
 
-export async function glpiFetch<T>(
+/**
+ * Faz uma requisição autenticada ao GLPI e retorna a Response crua.
+ * Útil para ler headers (Content-Range) sem perder o corpo.
+ */
+export async function glpiFetchRaw(
   endpoint: string,
-  params?: Record<string, string>
-): Promise<T> {
+  params?: Record<string, string>,
+): Promise<Response> {
   const token = await ensureSession();
 
   const url = new URL(`${GLPI_BASE_URL}/apirest.php${endpoint}`);
@@ -72,6 +76,14 @@ export async function glpiFetch<T>(
     throw new Error(`Erro na API GLPI: ${res.status} - ${error}`);
   }
 
+  return res;
+}
+
+export async function glpiFetch<T>(
+  endpoint: string,
+  params?: Record<string, string>,
+): Promise<T> {
+  const res = await glpiFetchRaw(endpoint, params);
   return res.json();
 }
 

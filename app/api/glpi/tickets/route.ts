@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { glpiFetch } from "@/lib/glpi-client";
+import {
+  getEnrichedTickets,
+  resolveUserName,
+  type UserMap,
+} from "@/lib/enrich-tickets";
 import type {
   GLPITicket,
-  GLPIUser,
   TicketKPIs,
   ChartDataItem,
   TrendDataItem,
+  TechStatusLoad,
+  TechStatusSegment,
+  OldestTicket,
 } from "@/types/glpi";
 import {
   TicketStatus,
@@ -17,29 +23,6 @@ import {
   TicketTypeLabel,
 } from "@/types/glpi";
 
-// Mapa de username -> "Firstname Realname"
-type UserMap = Record<string, string>;
-
-async function fetchUserMap(): Promise<UserMap> {
-  const users = await glpiFetch<GLPIUser[]>("/User", {
-    range: "0-500",
-  });
-  const map: UserMap = {};
-  users.forEach((u) => {
-    const fullName = [u.firstname, u.realname].filter(Boolean).join(" ").trim();
-    map[u.name] = fullName || u.name;
-    // Tambem mapear por id (caso expand_dropdowns retorne o name)
-    map[String(u.id)] = fullName || u.name;
-  });
-  return map;
-}
-
-function resolveUserName(raw: string | unknown, userMap: UserMap): string {
-  const key = String(raw || "").trim();
-  if (!key || key === "0") return "-";
-  return userMap[key] || key;
-}
-
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -47,14 +30,10 @@ export async function GET(request: NextRequest) {
     const dateFrom = searchParams.get("dateFrom");
     const dateTo = searchParams.get("dateTo");
 
-    // Buscar chamados e usuarios em paralelo
-    const [allTickets, userMap] = await Promise.all([
-      glpiFetch<GLPITicket[]>("/Ticket", {
-        range: "0-500",
-        expand_dropdowns: "true",
-      }),
-      fetchUserMap(),
-    ]);
+    // Tickets já vêm enriquecidos com _users_id_assign / _users_id_observer /
+    // _groups_id_assign (via Ticket_User e Group_Ticket). Paginação real + cache
+    // de 15s no servidor.
+    const { tickets: allTickets, userMap } = await getEnrichedTickets();
 
     // Filtrar por periodo se fornecido
     let tickets = allTickets;
@@ -70,7 +49,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (view === "kpis") {
-      return NextResponse.json(buildKPIs(tickets));
+      return NextResponse.json(buildKPIs(tickets, userMap));
     }
 
     if (view === "by-status") {
@@ -103,12 +82,15 @@ export async function GET(request: NextRequest) {
 
     // "all"
     return NextResponse.json({
-      kpis: buildKPIs(tickets),
+      kpis: buildKPIs(tickets, userMap),
       backlogByAge: buildBacklogByAge(tickets),
       byStatus: buildByStatus(tickets),
       byPriority: buildByPriority(tickets),
       byType: buildByType(tickets),
       byTechnician: buildByTechnician(tickets, userMap),
+      loadByTechAge: buildLoadByTechAge(tickets, userMap),
+      openByCategory: buildOpenByCategory(tickets),
+      oldestOpen: buildOldestOpen(tickets, userMap),
       byCategory: buildByCategory(tickets),
       trend: buildTrend(allTickets, dateFrom, dateTo),
       recent: buildRecent(tickets, userMap),
@@ -120,7 +102,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function buildKPIs(tickets: GLPITicket[]): TicketKPIs {
+function buildKPIs(tickets: GLPITicket[], userMap: UserMap): TicketKPIs {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfToday = new Date(
@@ -128,13 +110,13 @@ function buildKPIs(tickets: GLPITicket[]): TicketKPIs {
     now.getMonth(),
     now.getDate(),
   );
+  const startOfYesterday = new Date(startOfToday);
+  startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+  const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
 
-  const openStatuses = [
-    TicketStatus.New,
-    TicketStatus.Assigned,
-    TicketStatus.Planned,
-    TicketStatus.Pending,
-  ];
+  const openTickets = tickets.filter((t) =>
+    OPEN_TICKET_STATUSES.includes(t.status),
+  );
 
   const openedToday = tickets.filter(
     (t) => t.date_creation && new Date(t.date_creation) >= startOfToday,
@@ -147,9 +129,7 @@ function buildKPIs(tickets: GLPITicket[]): TicketKPIs {
       new Date(t.closedate) >= startOfToday,
   ).length;
 
-  const totalOpen = tickets.filter((t) =>
-    openStatuses.includes(t.status),
-  ).length;
+  const totalOpen = openTickets.length;
 
   const closedThisMonth = tickets.filter(
     (t) =>
@@ -158,8 +138,7 @@ function buildKPIs(tickets: GLPITicket[]): TicketKPIs {
       new Date(t.closedate) >= startOfMonth,
   ).length;
 
-  const slaOverdue = tickets.filter((t) => {
-    if (!openStatuses.includes(t.status)) return false;
+  const slaOverdue = openTickets.filter((t) => {
     if (!t.time_to_resolve) return false;
     return new Date(t.time_to_resolve) < now;
   }).length;
@@ -180,6 +159,99 @@ function buildKPIs(tickets: GLPITicket[]): TicketKPIs {
       Math.round((totalHours / resolvedThisMonth.length) * 10) / 10;
   }
 
+  // ── Novos KPIs ─────────────────────────────────────────────────────────
+
+  // Fila órfã: tickets em aberto sem técnico nem grupo atribuído
+  const unassigned = openTickets.filter(
+    (t) =>
+      (t._users_id_assign?.length ?? 0) === 0 &&
+      (t._groups_id_assign?.length ?? 0) === 0,
+  ).length;
+
+  // Ticket mais antigo em aberto: idade em dias do criado mais antigo
+  let oldestOpenDays = 0;
+  for (const t of openTickets) {
+    if (!t.date_creation) continue;
+    const created = new Date(t.date_creation).getTime();
+    if (Number.isNaN(created)) continue;
+    const ageDays = (now.getTime() - created) / 86_400_000;
+    if (ageDays > oldestOpenDays) oldestOpenDays = ageDays;
+  }
+  oldestOpenDays = Math.round(oldestOpenDays);
+
+  // SLA crítico: tickets em aberto cujo time_to_resolve vence em <2h (mas ainda não venceu)
+  const slaCriticalCount = openTickets.filter((t) => {
+    if (!t.time_to_resolve) return false;
+    const deadline = new Date(t.time_to_resolve);
+    return deadline >= now && deadline < twoHoursFromNow;
+  }).length;
+
+  // Carga atual: tickets em aberto por técnico (cada técnico do array conta 1)
+  const loadMap = new Map<string, number>();
+  for (const t of openTickets) {
+    const techs = t._users_id_assign ?? [];
+    if (techs.length === 0) {
+      loadMap.set("Não atribuído", (loadMap.get("Não atribuído") ?? 0) + 1);
+      continue;
+    }
+    for (const techId of techs) {
+      const name = resolveUserName(techId, userMap);
+      loadMap.set(name, (loadMap.get(name) ?? 0) + 1);
+    }
+  }
+  const currentLoadByTech: ChartDataItem[] = Array.from(loadMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([name, value]) => ({ name, value }));
+
+  // MTTR por prioridade (em horas) — resolvidos no mês
+  const mttrAcc = new Map<number, { sum: number; count: number }>();
+  for (const t of resolvedThisMonth) {
+    const created = new Date(t.date_creation).getTime();
+    const solved = new Date(t.solvedate!).getTime();
+    if (Number.isNaN(created) || Number.isNaN(solved)) continue;
+    const hours = (solved - created) / 3_600_000;
+    const acc = mttrAcc.get(t.priority) ?? { sum: 0, count: 0 };
+    acc.sum += hours;
+    acc.count += 1;
+    mttrAcc.set(t.priority, acc);
+  }
+  const mttrByPriority: ChartDataItem[] = Array.from(mttrAcc.entries())
+    .sort((a, b) => b[0] - a[0])
+    .map(([priority, { sum, count }]) => ({
+      name: TicketPriorityLabel[priority] ?? `Prioridade ${priority}`,
+      value: Math.round((sum / count) * 10) / 10,
+      color: TicketPriorityColor[priority],
+    }));
+
+  // % SLA cumprido hoje vs ontem (resolvidos com solvedate <= time_to_resolve)
+  const slaPctFor = (start: Date, end: Date): number | null => {
+    const resolved = tickets.filter((t) => {
+      if (!t.solvedate || !t.time_to_resolve) return false;
+      const solved = new Date(t.solvedate);
+      return solved >= start && solved < end;
+    });
+    if (resolved.length === 0) return null;
+    const onTime = resolved.filter(
+      (t) => new Date(t.solvedate!) <= new Date(t.time_to_resolve!),
+    ).length;
+    return Math.round((onTime / resolved.length) * 100);
+  };
+  const slaTodayPct = slaPctFor(
+    startOfToday,
+    new Date(startOfToday.getTime() + 86_400_000),
+  );
+  const slaYesterdayPct = slaPctFor(startOfYesterday, startOfToday);
+
+  // Reabertos no mês: em aberto AGORA mas com solvedate ou closedate setado no passado
+  const reopenedThisMonth = openTickets.filter((t) => {
+    if (!t.solvedate && !t.closedate) return false;
+    const lastResolve = t.solvedate
+      ? new Date(t.solvedate)
+      : new Date(t.closedate!);
+    return lastResolve >= startOfMonth;
+  }).length;
+
   return {
     totalOpen,
     closedThisMonth,
@@ -187,6 +259,14 @@ function buildKPIs(tickets: GLPITicket[]): TicketKPIs {
     avgResolutionHours,
     openedToday,
     closedToday,
+    unassigned,
+    oldestOpenDays,
+    slaCriticalCount,
+    currentLoadByTech,
+    mttrByPriority,
+    slaTodayPct,
+    slaYesterdayPct,
+    reopenedThisMonth,
   };
 }
 
@@ -248,15 +328,21 @@ function buildByTechnician(
   tickets: GLPITicket[],
   userMap: UserMap,
 ): ChartDataItem[] {
+  // Conta tickets por TÉCNICO ATRIBUÍDO (Ticket_User type=2).
+  // Cada técnico em t._users_id_assign conta 1 (escalações com múltiplos técnicos
+  // somam para cada um). Tickets sem nenhum técnico vão pro bucket "Não atribuído"
+  // — sinaliza fila órfã sem mascarar com fallback enganoso (lastupdater).
   const techCounts: Record<string, number> = {};
 
   tickets.forEach((t) => {
-    const username =
-      (t._users_id_assign?.[0] != null ? String(t._users_id_assign[0]) : "") ||
-      String(t.users_id_lastupdater || "");
-    const displayName = resolveUserName(username, userMap);
-    if (displayName !== "-") {
-      techCounts[displayName] = (techCounts[displayName] || 0) + 1;
+    const techs = t._users_id_assign ?? [];
+    if (techs.length === 0) {
+      techCounts["Não atribuído"] = (techCounts["Não atribuído"] || 0) + 1;
+      return;
+    }
+    for (const techId of techs) {
+      const name = resolveUserName(techId, userMap);
+      techCounts[name] = (techCounts[name] || 0) + 1;
     }
   });
 
@@ -270,6 +356,25 @@ function buildByCategory(tickets: GLPITicket[]): ChartDataItem[] {
   const catCounts: Record<string, number> = {};
 
   tickets.forEach((t) => {
+    const rawName = (t._category_name || "").trim();
+    const rawId = String(t.itilcategories_id ?? "").trim();
+    const idIsEmpty = rawId === "" || rawId === "0";
+    const catName = rawName || (idIsEmpty ? "Sem categoria" : rawId);
+    catCounts[catName] = (catCounts[catName] || 0) + 1;
+  });
+
+  return Object.entries(catCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 10)
+    .map(([name, value]) => ({ name, value }));
+}
+
+/** Carga atual (chamados em ABERTO) agrupada por categoria — top 10. */
+function buildOpenByCategory(tickets: GLPITicket[]): ChartDataItem[] {
+  const open = tickets.filter((t) => OPEN_TICKET_STATUSES.includes(t.status));
+  const catCounts: Record<string, number> = {};
+
+  open.forEach((t) => {
     const rawName = (t._category_name || "").trim();
     const rawId = String(t.itilcategories_id ?? "").trim();
     const idIsEmpty = rawId === "" || rawId === "0";
@@ -346,6 +451,122 @@ const OPEN_TICKET_STATUSES: number[] = [
   TicketStatus.Pending,
 ];
 
+/** Janelas de tempo (idade do chamado) para a carga empilhada por tempo. */
+const AGE_BUCKETS = [
+  { label: "Hoje", color: "#10B981" },
+  { label: "Esta semana", color: "#F59E0B" },
+  { label: "Até 30 dias", color: "#F97316" },
+  { label: "+30 dias", color: "#EF4444" },
+];
+
+/**
+ * Carga em aberto por técnico decomposta pela JANELA de tempo de abertura:
+ * Hoje → Esta semana → Até 30 dias → Acima de 30 dias. Verde = mais recente;
+ * vermelho = parado há mais de 30 dias. "Não atribuído" entra como
+ * pseudo-técnico. Top 10 por total.
+ */
+function buildLoadByTechAge(
+  tickets: GLPITicket[],
+  userMap: UserMap,
+): TechStatusLoad[] {
+  const openTickets = tickets.filter((t) =>
+    OPEN_TICKET_STATUSES.includes(t.status),
+  );
+
+  const now = new Date();
+  const DAY = 86_400_000;
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  ).getTime();
+  const mondayOffset = (now.getDay() + 6) % 7; // semana começa na segunda
+  const startOfWeek = startOfToday - mondayOffset * DAY;
+  const thirtyDaysAgo = now.getTime() - 30 * DAY;
+
+  const bucketOf = (createdMs: number): number => {
+    if (createdMs >= startOfToday) return 0; // Hoje
+    if (createdMs >= startOfWeek) return 1; // Esta semana
+    if (createdMs >= thirtyDaysAgo) return 2; // Até 30 dias
+    return 3; // Acima de 30 dias
+  };
+
+  // técnico -> (bucket -> contagem)
+  const map = new Map<string, Map<number, number>>();
+  for (const t of openTickets) {
+    if (!t.date_creation) continue;
+    const created = new Date(t.date_creation).getTime();
+    if (Number.isNaN(created)) continue;
+    const bucket = bucketOf(created);
+    const techs = t._users_id_assign ?? [];
+    const names =
+      techs.length === 0
+        ? ["Não atribuído"]
+        : techs.map((id) => resolveUserName(id, userMap));
+    for (const name of names) {
+      const byBucket = map.get(name) ?? new Map<number, number>();
+      byBucket.set(bucket, (byBucket.get(bucket) ?? 0) + 1);
+      map.set(name, byBucket);
+    }
+  }
+
+  const result: TechStatusLoad[] = Array.from(map.entries()).map(
+    ([name, byBucket]) => {
+      const segments: TechStatusSegment[] = Array.from(byBucket.entries())
+        .map(([bucket, value]) => ({
+          status: bucket,
+          label: AGE_BUCKETS[bucket].label,
+          color: AGE_BUCKETS[bucket].color,
+          value,
+        }))
+        .sort((a, b) => a.status - b.status);
+      const total = segments.reduce((sum, seg) => sum + seg.value, 0);
+      return { name, total, segments };
+    },
+  );
+
+  return result.sort((a, b) => b.total - a.total).slice(0, 10);
+}
+
+/**
+ * Top 10 chamados em aberto mais antigos, com técnico, idade (dias) e data.
+ */
+function buildOldestOpen(
+  tickets: GLPITicket[],
+  userMap: UserMap,
+): OldestTicket[] {
+  const openTickets = tickets.filter((t) =>
+    OPEN_TICKET_STATUSES.includes(t.status),
+  );
+  const now = Date.now();
+
+  return openTickets
+    .filter((t) => t.date_creation)
+    .map((t) => {
+      const created = new Date(t.date_creation).getTime();
+      const ageDays = Number.isNaN(created)
+        ? 0
+        : Math.floor((now - created) / 86_400_000);
+      const techs = t._users_id_assign ?? [];
+      const technician =
+        techs.length === 0
+          ? "Não atribuído"
+          : techs
+              .map((id) => resolveUserName(id, userMap))
+              .filter((n) => n !== "-")
+              .join(", ") || "Não atribuído";
+      return {
+        id: t.id,
+        name: t.name,
+        technician,
+        ageDays,
+        date_creation: t.date_creation,
+      };
+    })
+    .sort((a, b) => b.ageDays - a.ageDays)
+    .slice(0, 10);
+}
+
 export interface BacklogByAge {
   today: number;
   week: number;
@@ -412,9 +633,14 @@ function buildRecent(tickets: GLPITicket[], userMap: UserMap) {
   );
 
   return sorted.slice(0, 25).map((t) => {
-    const techUsername =
-      (t._users_id_assign?.[0] != null ? String(t._users_id_assign[0]) : "") ||
-      String(t.users_id_lastupdater || "");
+    const techs = t._users_id_assign ?? [];
+    const technician =
+      techs.length === 0
+        ? "Não atribuído"
+        : techs
+            .map((id) => resolveUserName(id, userMap))
+            .filter((n) => n !== "-")
+            .join(", ") || "Não atribuído";
     const recipientUsername = String(t.users_id_recipient || "");
 
     return {
@@ -428,7 +654,7 @@ function buildRecent(tickets: GLPITicket[], userMap: UserMap) {
       priority: t.priority,
       priorityLabel: TicketPriorityLabel[t.priority] || String(t.priority),
       priorityColor: TicketPriorityColor[t.priority] || "#9CA3AF",
-      technician: resolveUserName(techUsername, userMap),
+      technician,
       recipientName: resolveUserName(recipientUsername, userMap),
       location: "-",
       date_creation: t.date_creation,
