@@ -13,6 +13,7 @@ interface RecentLite {
   typeLabel: string;
   priorityLabel: string;
   recipientName: string;
+  date_creation: string;
   sla: string;
   slaOverdue: boolean;
 }
@@ -24,13 +25,14 @@ interface KpisLite {
 }
 
 /**
- * Dispara os anúncios por voz a partir dos dados de chamados (sem UI própria).
- * - Novos chamados (entraram desde a última leitura)
- * - Novos SLA vencidos
- * - Resumo periódico dos KPIs
+ * Dispara os anúncios por voz a partir dos dados de chamados.
  *
- * Só fala quando a voz está ativada. Na primeira carga apenas registra a
- * baseline (não anuncia os chamados já existentes).
+ * Pontos-chave para NÃO anunciar aleatoriamente:
+ * - os IDs já anunciados ACUMULAM (Set que só cresce), então cada chamado é
+ *   falado UMA única vez — mesmo que ele saia e volte ao top‑25 (a lista
+ *   "recentes" é limitada, então a membership oscila);
+ * - ao LIGAR a voz, "arma" registrando os atuais como já vistos (não anuncia o
+ *   backlog) e, daí em diante, fala só os que chegarem.
  */
 export function VoiceAnnouncer() {
   const { enabled, speak } = useVoice();
@@ -39,38 +41,54 @@ export function VoiceAnnouncer() {
   const recent = (data?.recent ?? []) as RecentLite[];
   const kpis = data?.kpis as KpisLite | undefined;
 
-  const seenIds = useRef<Set<number> | null>(null);
-  const overdueIds = useRef<Set<number>>(new Set());
+  const armed = useRef(false);
+  const announced = useRef<Set<number>>(new Set());
+  const announcedOverdue = useRef<Set<number>>(new Set());
 
-  // Novos chamados + novos SLA vencidos
+  // Desligar a voz "desarma": ao religar, a baseline é refeita (sem backlog).
   useEffect(() => {
-    if (recent.length === 0) return;
+    if (!enabled) armed.current = false;
+  }, [enabled]);
 
-    const currentIds = new Set(recent.map((t) => t.id));
-    const currentOverdue = new Set(
-      recent.filter((t) => t.slaOverdue && t.sla !== "-").map((t) => t.id),
-    );
+  useEffect(() => {
+    if (!enabled || recent.length === 0) return;
 
-    // só anuncia a partir da 2ª leitura (evita falar tudo no 1º carregamento)
-    if (seenIds.current && enabled) {
-      const novos = recent.filter((t) => !seenIds.current!.has(t.id));
-      for (const t of novos.slice(0, 2)) {
-        speak(
-          `Novo chamado ${t.typeLabel}, prioridade ${t.priorityLabel}: ` +
-            `${t.name}. Solicitante ${t.recipientName}.`,
-        );
-      }
-
-      const novosVencidos = recent.filter(
-        (t) => currentOverdue.has(t.id) && !overdueIds.current.has(t.id),
+    // Primeira leitura após ligar: registra o estado atual como baseline.
+    if (!armed.current) {
+      armed.current = true;
+      announced.current = new Set(recent.map((t) => t.id));
+      announcedOverdue.current = new Set(
+        recent.filter((t) => t.slaOverdue && t.sla !== "-").map((t) => t.id),
       );
-      for (const t of novosVencidos.slice(0, 2)) {
-        speak(`Atenção: SLA vencido no chamado ${t.name}`);
-      }
+      return;
     }
 
-    seenIds.current = currentIds;
-    overdueIds.current = currentOverdue;
+    const byArrival = (a: RecentLite, b: RecentLite) =>
+      new Date(a.date_creation).getTime() - new Date(b.date_creation).getTime();
+
+    // Novos chamados (nunca anunciados) — na ordem de chegada.
+    const novos = recent
+      .filter((t) => !announced.current.has(t.id))
+      .sort(byArrival);
+    for (const t of novos) {
+      announced.current.add(t.id);
+      speak(
+        `Novo chamado ${t.typeLabel}, prioridade ${t.priorityLabel}: ` +
+          `${t.name}. Solicitante ${t.recipientName}.`,
+      );
+    }
+
+    // SLA recém-vencidos (nunca anunciados como vencidos).
+    const novosVencidos = recent.filter(
+      (t) =>
+        t.slaOverdue &&
+        t.sla !== "-" &&
+        !announcedOverdue.current.has(t.id),
+    );
+    for (const t of novosVencidos) {
+      announcedOverdue.current.add(t.id);
+      speak(`Atenção: SLA vencido no chamado ${t.name}`);
+    }
   }, [recent, enabled, speak]);
 
   // Resumo periódico dos KPIs
