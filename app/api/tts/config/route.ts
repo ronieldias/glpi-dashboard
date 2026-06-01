@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDefaultVoice, setDefaultVoice, isValidVoice } from "@/lib/voice-config";
+import {
+  getDefaultVoice,
+  setDefaultVoice,
+  isValidVoice,
+  hasGoogleKey,
+} from "@/lib/voice-config";
 
-/** Voz padrão atual do painel. */
 export async function GET() {
-  return NextResponse.json({ voice: await getDefaultVoice() });
+  return NextResponse.json({
+    voice: await getDefaultVoice(),
+    hasKey: hasGoogleKey(),
+  });
 }
 
-/** Define a voz padrão do painel (persistida no servidor). */
 export async function POST(request: NextRequest) {
   let voice = "";
   try {

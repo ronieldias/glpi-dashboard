@@ -16,23 +16,12 @@ interface KPICardProps {
   title: string;
   value: string | number;
   icon: LucideIcon;
-  /** Descrição curta (aparece como texto pequeno OU tooltip em ícone "i"). */
   description?: string;
-  /** Modo crítico: borda + texto em tom de alerta. */
   highlight?: boolean;
   loading?: boolean;
-  /** Comparativo (ex: "+12 hoje"). */
   delta?: { value: number; label: string };
 }
 
-/**
- * KPI Card — shadcn-style refinado:
- * - Hierarquia clara: label > valor > delta/desc
- * - Hover sutil (shadow + leve translate)
- * - Tooltip no ícone "i" pra descrições longas
- * - Highlight crítico: borda colorida + ring + valor em vermelho
- * - CountUp animado pra valores numéricos (continua compatível)
- */
 export function KPICard({
   title,
   value,
@@ -61,19 +50,10 @@ export function KPICard({
       className={cn(
         "group relative h-full overflow-hidden border bg-card transition-all",
         "hover:border-glpi-primary/40 hover:shadow-sm",
-        // Highlight sutil: só borda + barra fina lateral, sem manchão de fundo.
         highlight && "border-red-500/30",
       )}
     >
-      {/* Barra vertical lateral de alerta — discreta, não polui o card */}
-      {highlight && (
-        <span
-          className="absolute inset-y-0 left-0 w-0.5 bg-red-500/70"
-          aria-hidden
-        />
-      )}
       <CardContent className="flex h-full flex-col justify-between gap-1.5 p-3">
-        {/* Top: label + icon */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-center gap-1">
             <p className="truncate text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
@@ -108,7 +88,6 @@ export function KPICard({
           </div>
         </div>
 
-        {/* Bottom: value + delta */}
         <div className="flex items-end justify-between gap-2">
           <p
             className={cn(

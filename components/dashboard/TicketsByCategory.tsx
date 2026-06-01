@@ -14,16 +14,6 @@ interface TicketsByCategoryProps {
 const PAGE_SIZE = 5;
 const ROTATION_MS = 5000;
 
-/**
- * Top 10 Categorias — lista paginada com rotação automática (igual ao
- * "Ranking por Técnico"): mostra PAGE_SIZE categorias por vez, com barra de
- * progresso enchendo em ROTATION_MS e dots de paginação. Paginar em vez de
- * espremer as 10 dá respiro a cada linha e mantém o ritmo visual do painel.
- *
- * Cada linha: posição · nome (caminho profundo encurtado, "… › pai › folha")
- * · valor + %. A proporção é o preenchimento de fundo (data bar), então o
- * nome usa toda a largura disponível.
- */
 export function TicketsByCategory({ data, loading }: TicketsByCategoryProps) {
   const [pageIndex, setPageIndex] = useState(0);
 
@@ -99,7 +89,6 @@ export function TicketsByCategory({ data, loading }: TicketsByCategoryProps) {
         </span>
       </CardHeader>
 
-      {/* Barra de progresso da rotação (só aparece se paginando) */}
       {needsRotation && (
         <div className="relative h-0.5 w-full bg-progress-track overflow-hidden flex-shrink-0">
           <div
@@ -124,7 +113,6 @@ export function TicketsByCategory({ data, loading }: TicketsByCategoryProps) {
           ))}
         </ol>
 
-        {/* Dots de paginação (só se paginando) */}
         {needsRotation && (
           <div
             className="flex shrink-0 items-center justify-center gap-1.5 pt-0.5"
@@ -177,16 +165,11 @@ function CategoryRow({
     <li
       style={{ animationDelay: `${staggerDelay}ms` }}
       className={cn(
-        // posição · nome (largura total) · valor. A proporção é o preenchimento
-        // de fundo (data bar), então o nome cabe em qualquer largura do widget.
-        // px-2 dá respiro horizontal ao texto sobre a barra.
         "tv-row-slide-in relative grid grid-cols-[1.1rem_minmax(0,1fr)_auto] items-center gap-2 py-0.5 px-2",
         "border-b border-border/60 last:border-b-0",
         "transition-colors hover:bg-muted/20",
       )}
     >
-      {/* Barra de proporção como preenchimento de fundo (data bar) — recuada
-          verticalmente para não encostar nas divisórias (respiro). */}
       <div
         className={cn(
           "absolute inset-y-[3px] left-0 z-0 rounded transition-all duration-500",
@@ -196,7 +179,6 @@ function CategoryRow({
         aria-hidden
       />
 
-      {/* Posição */}
       <span
         className={cn(
           "relative z-10 text-right font-mono text-[10px] tabular-nums",
@@ -206,7 +188,6 @@ function CategoryRow({
         {position}
       </span>
 
-      {/* Apenas o último nome (folha) — caminho completo fica no tooltip */}
       <span
         className="relative z-10 truncate text-[11px] font-medium leading-tight text-card-foreground"
         title={name}
@@ -214,7 +195,6 @@ function CategoryRow({
         {leaf}
       </span>
 
-      {/* Valor + % do total */}
       <div className="relative z-10 flex items-baseline justify-end gap-1.5">
         <span
           className={cn(
@@ -232,15 +212,6 @@ function CategoryRow({
   );
 }
 
-/**
- * Último segmento (folha) do nome da categoria. Separa só por `>` — o
- * separador de hierarquia do GLPI — preservando `/` que aparece dentro de
- * nomes (ex.: "Microsoft 365 / Google Workspace", "Computador/Notebook").
- * Exemplos:
- *   "Sistemas > SAGI > Erros e Falhas"  → "Erros e Falhas"
- *   "Sistemas > Microsoft 365 / Google" → "Microsoft 365 / Google"
- *   "Sem categoria"                     → "Sem categoria"
- */
 function categoryLeaf(raw: string): string {
   const parts = raw.split(">").map((p) => p.trim()).filter(Boolean);
   return parts.length > 0 ? parts[parts.length - 1] : raw.trim();

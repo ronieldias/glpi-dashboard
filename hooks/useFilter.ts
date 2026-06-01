@@ -15,9 +15,7 @@ export interface FilterContextType {
   setPreset: (preset: Exclude<FilterPreset, "custom" | null>) => void;
   setCustomRange: (from: string, to: string) => void;
   clearFilter: () => void;
-  /** Retorna os query params para passar para a API */
   filterParams: Record<string, string>;
-  /** Label do filtro ativo para exibição */
   filterLabel: string | null;
 }
 

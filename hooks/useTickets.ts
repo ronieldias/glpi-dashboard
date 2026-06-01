@@ -3,18 +3,8 @@
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { POLLING_INTERVAL } from "@/lib/utils";
-import { useFilter } from "@/hooks/useFilter";
+import { useScopedFilterParams } from "@/hooks/useWidgetFilter";
 
-/**
- * Source of truth para dados de tickets: 1 fetch por polling.
- * Todos os hooks abaixo (KPIs, byStatus, byTrend, recent) consomem o MESMO
- * queryKey via `select` — TanStack Query desduplica a request e cada widget
- * recebe sua fatia sem refetch concorrente.
- *
- * `placeholderData: keepPreviousData` evita o "flash de loading" enquanto a
- * próxima rodada de polling chega — a tela mantém o estado anterior até o
- * fetch novo terminar.
- */
 async function fetchTicketsAll(params: Record<string, string>) {
   const searchParams = new URLSearchParams({ view: "all", ...params });
   const res = await fetch(`/api/glpi/tickets?${searchParams}`);
@@ -26,7 +16,7 @@ async function fetchTicketsAll(params: Record<string, string>) {
 }
 
 export function useTicketsAll() {
-  const { filterParams } = useFilter();
+  const filterParams = useScopedFilterParams();
 
   return useQuery({
     queryKey: ["tickets", "all", filterParams],
@@ -45,11 +35,8 @@ export function useTicketsAll() {
   });
 }
 
-// Hooks de conveniência: views específicas usando `select` no mesmo queryKey.
-// Não disparam fetch extra — reusam o cache de useTicketsAll.
-
 export function useTicketKPIs() {
-  const { filterParams } = useFilter();
+  const filterParams = useScopedFilterParams();
   return useQuery({
     queryKey: ["tickets", "all", filterParams],
     queryFn: () => fetchTicketsAll(filterParams),
@@ -60,7 +47,7 @@ export function useTicketKPIs() {
 }
 
 export function useTicketsByStatus() {
-  const { filterParams } = useFilter();
+  const filterParams = useScopedFilterParams();
   return useQuery({
     queryKey: ["tickets", "all", filterParams],
     queryFn: () => fetchTicketsAll(filterParams),
@@ -71,7 +58,7 @@ export function useTicketsByStatus() {
 }
 
 export function useTicketTrend() {
-  const { filterParams } = useFilter();
+  const filterParams = useScopedFilterParams();
   return useQuery({
     queryKey: ["tickets", "all", filterParams],
     queryFn: () => fetchTicketsAll(filterParams),
@@ -82,7 +69,7 @@ export function useTicketTrend() {
 }
 
 export function useRecentTickets() {
-  const { filterParams } = useFilter();
+  const filterParams = useScopedFilterParams();
   return useQuery({
     queryKey: ["tickets", "all", filterParams],
     queryFn: () => fetchTicketsAll(filterParams),

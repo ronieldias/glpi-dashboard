@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import type { WidgetDefinition, WidgetCategory } from "@/types/widget";
 
-// Lazy imports for widget wrapper components
 import { KPITicketsOpen } from "@/components/dashboard/widgets/kpi-tickets-open";
 import { KPITicketsClosed } from "@/components/dashboard/widgets/kpi-tickets-closed";
 import { KPIAvgTime } from "@/components/dashboard/widgets/kpi-avg-time";
@@ -27,13 +26,11 @@ import { KPIProjectsDone } from "@/components/dashboard/widgets/kpi-projects-don
 import { KPIOverdue } from "@/components/dashboard/widgets/kpi-overdue";
 import { KPITasksOpen } from "@/components/dashboard/widgets/kpi-tasks-open";
 import { KPISLABreach } from "@/components/dashboard/widgets/kpi-sla-breach";
-// KPIs analíticos novos
 import { KPIUnassigned } from "@/components/dashboard/widgets/kpi-unassigned";
 import { KPIOldestOpen } from "@/components/dashboard/widgets/kpi-oldest-open";
 import { KPISLACritical } from "@/components/dashboard/widgets/kpi-sla-critical";
 import { KPISLAToday } from "@/components/dashboard/widgets/kpi-sla-today";
 import { KPIReopened } from "@/components/dashboard/widgets/kpi-reopened";
-// Widgets de análise novos
 import { WidgetCurrentLoad } from "@/components/dashboard/widgets/widget-current-load";
 import { WidgetOldestTickets } from "@/components/dashboard/widgets/widget-oldest-tickets";
 import { WidgetMttrPriority } from "@/components/dashboard/widgets/widget-mttr-priority";
@@ -52,7 +49,6 @@ import { WidgetProjectTimeline } from "@/components/dashboard/widgets/widget-pro
 import { WidgetProjectsTable } from "@/components/dashboard/widgets/widget-projects-table";
 
 export const widgetCatalog: WidgetDefinition[] = [
-  // Ticket KPIs
   {
     id: "kpi-tickets-open",
     title: "Chamados Abertos",
@@ -89,7 +85,6 @@ export const widgetCatalog: WidgetDefinition[] = [
     maxH: 8,
     component: KPIAvgTime,
   },
-  // Project KPIs
   {
     id: "kpi-projects-active",
     title: "Projetos Ativos",
@@ -139,7 +134,6 @@ export const widgetCatalog: WidgetDefinition[] = [
     component: KPITasksOpen,
   },
 
-  // Tickets KPIs
   {
     id: "kpi-sla-breach",
     title: "SLA Vencido",
@@ -153,7 +147,6 @@ export const widgetCatalog: WidgetDefinition[] = [
     component: KPISLABreach,
   },
 
-  // ── KPIs analíticos novos ──────────────────────────────────────────
   {
     id: "kpi-unassigned",
     title: "Fila órfã",
@@ -215,7 +208,6 @@ export const widgetCatalog: WidgetDefinition[] = [
     component: KPIReopened,
   },
 
-  // ── Widgets de análise novos ───────────────────────────────────────
   {
     id: "current-load",
     title: "Carga atual por técnico",
@@ -265,7 +257,6 @@ export const widgetCatalog: WidgetDefinition[] = [
     component: WidgetBacklogByAge,
   },
 
-  // Tickets charts
   {
     id: "tickets-by-status",
     title: "Chamados por Status",
@@ -351,7 +342,6 @@ export const widgetCatalog: WidgetDefinition[] = [
     component: WidgetRecentTickets,
   },
 
-  // Projects charts
   {
     id: "projects-by-status",
     title: "Status Projetos",
@@ -434,10 +424,8 @@ export function getWidgetsForPage(page: string): WidgetDefinition[] {
   return widgetCatalog.filter((w) => categories.includes(w.category));
 }
 
-// Re-export for convenience
 import { PAGE_ALLOWED_CATEGORIES } from "@/types/widget";
 
-// Icon map for KPIs (used in registry display)
 export const KPI_ICONS: Record<string, typeof Ticket> = {
   "kpi-tickets-open": Ticket,
   "kpi-tickets-closed": CheckCircle,

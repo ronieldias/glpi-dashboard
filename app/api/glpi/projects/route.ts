@@ -18,8 +18,6 @@ export async function GET(request: NextRequest) {
     const dateFrom = searchParams.get("dateFrom");
     const dateTo = searchParams.get("dateTo");
 
-    // Paginação real + cache 15s. ProjectTask hoje tem 3 itens mas se crescer
-    // o range=0-1000 hardcoded ficaria silenciosamente errado.
     const [allProjects, allTasks] = await Promise.all([
       getOrFetch("projects-all", PROJECTS_TTL_MS, () =>
         glpiFetchAll<GLPIProject>("/Project", {
@@ -35,7 +33,6 @@ export async function GET(request: NextRequest) {
       ),
     ]);
 
-    // Filtrar por periodo se fornecido
     let projects = allProjects;
     let tasks = allTasks;
     if (dateFrom || dateTo) {
@@ -74,7 +71,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(buildList(projects));
     }
 
-    // "all"
     return NextResponse.json({
       kpis: buildKPIs(projects, tasks),
       byStatus: buildByStatus(projects),
@@ -91,7 +87,6 @@ export async function GET(request: NextRequest) {
 }
 
 function isActiveStatus(project: GLPIProject): boolean {
-  // projectstates_id varia por instalação. Usamos percent_done < 100 e sem real_end_date
   return project.percent_done < 100 && !project.real_end_date;
 }
 
@@ -123,7 +118,6 @@ function buildKPIs(
 
   const overdueProjects = projects.filter(isOverdue).length;
 
-  // Tarefas que nao sao "Finalizado" nem "Cancelado"
   const openTasks = tasks.filter((t) => {
     const state = getTaskState(t);
     return state !== "finalizado" && state !== "cancelado";
@@ -193,7 +187,6 @@ function buildProgress(projects: GLPIProject[]): ChartDataItem[] {
 }
 
 function getTaskState(task: GLPIProjectTask): string {
-  // Com expand_dropdowns, projectstates_id vem como string com o nome do status
   const state = String(task.projectstates_id || "")
     .toLowerCase()
     .trim();
@@ -201,7 +194,6 @@ function getTaskState(task: GLPIProjectTask): string {
   if (state.includes("andamento")) return "em andamento";
   if (state.includes("cancelado")) return "cancelado";
   if (state.includes("novo")) return "novo";
-  // Fallback pelo percent_done
   if (task.percent_done >= 100) return "finalizado";
   if (task.percent_done > 0) return "em andamento";
   return "novo";

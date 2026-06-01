@@ -15,9 +15,7 @@ interface RecentTicket {
   statusLabel: string;
   priorityLabel: string;
   priorityColor: string;
-  /** Nível numérico (1–6) — usado para destacar urgência. Já vem no payload. */
   priority: number;
-  /** Técnico responsável; "Não atribuído" quando órfão. Já vem no payload. */
   technician: string;
   recipientName: string;
   location: string;
@@ -112,8 +110,6 @@ export function RecentTicketsList({
     );
   }
 
-  // Item de maior urgência (SLA vencido vence; depois prioridade alta). É ele
-  // que recebe o destaque visual — não mais o "mais recente".
   const activeTickets = displayed.filter((d) => d._state !== "leave");
   let mostUrgentId: number | null = null;
   let mostUrgentScore = 0;
@@ -162,7 +158,6 @@ export function RecentTicketsList({
                   }
                   className={cn(
                     "relative flex items-start gap-2 rounded-md px-2 py-1.5 transition-colors cursor-default",
-                    // Fundo por urgência: vencido > mais urgente > mais recente
                     isOverdue
                       ? "bg-red-500/[0.07]"
                       : isMostUrgent
@@ -170,7 +165,6 @@ export function RecentTicketsList({
                         : isNewest
                           ? "bg-glpi-primary/[0.06]"
                           : "",
-                    // Anel no item de maior urgência (foco único da lista)
                     isMostUrgent &&
                       (isOverdue
                         ? "ring-1 ring-inset ring-red-500/50"
@@ -179,12 +173,9 @@ export function RecentTicketsList({
                     ticket._state === "leave" && "animate-ticket-leave",
                   )}
                 >
-                  {/* Tipo + sinal de chamado sem técnico */}
                   <div className="mt-0.5 flex shrink-0 flex-col items-center gap-1">
                     <span
                       className={cn(
-                        // Tipo em tom NEUTRO (diferenciado por brilho), reservando
-                        // vermelho/âmbar exclusivamente para urgência (SLA/prioridade).
                         "rounded px-1 py-0.5 text-[10px] font-bold uppercase leading-none",
                         ticket.type === 1
                           ? "bg-zinc-300/15 text-zinc-100"
@@ -233,7 +224,6 @@ export function RecentTicketsList({
                             <title>SLA no prazo</title>
                           </Clock>
                         ))}
-                      {/* Prioridade: dot discreto (no lugar da faixa lateral) */}
                       <span
                         className="inline-block h-2 w-2 rounded-full"
                         style={{ backgroundColor: ticket.priorityColor }}

@@ -44,7 +44,6 @@ export default function TVTicketsPage() {
 
   return (
     <div className="grid h-full grid-cols-12 grid-rows-[auto_minmax(0,1fr)_minmax(0,1fr)] gap-3">
-      {/* Linha 1: 4 KPIs (em aberto + backlog by age) */}
       <div className="col-span-3">
         <KPICardTV
           label="Em aberto"
@@ -78,7 +77,6 @@ export default function TVTicketsPage() {
         />
       </div>
 
-      {/* Linha 2: status (donut) + MTTR (bar) */}
       <BigChartCard
         title="Por status"
         subtitle="abertos × concluídos"
@@ -125,7 +123,6 @@ export default function TVTicketsPage() {
         )}
       </BigChartCard>
 
-      {/* Linha 3: tendência ocupando largura inteira */}
       <BigChartCard
         title="Tendência"
         subtitle="abertos e fechados nos últimos 30 dias"
@@ -208,12 +205,6 @@ function EmptyState({ text }: { text: string }) {
   );
 }
 
-/**
- * Distribuição de status no modo TV: agrupa em "Em aberto" (acionável) e
- * "Concluídos", com dois grandes números, uma barra de proporção e o detalhe
- * por status em duas colunas. Substitui o donut, que escondia os status
- * acionáveis sob a fatia gigante de "Fechado".
- */
 function StatusBreakdown({ data }: { data: ChartDataItem[] }) {
   if (data.length === 0) return <EmptyState text="Sem dados" />;
 

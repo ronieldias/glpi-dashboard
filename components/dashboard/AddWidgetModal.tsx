@@ -26,7 +26,6 @@ export function AddWidgetModal({ page, col, row, onClose }: AddWidgetModalProps)
   const [error, setError] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Close on click outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
@@ -37,7 +36,6 @@ export function AddWidgetModal({ page, col, row, onClose }: AddWidgetModalProps)
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [onClose]);
 
-  // Close on Escape
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -49,10 +47,8 @@ export function AddWidgetModal({ page, col, row, onClose }: AddWidgetModalProps)
   const availableWidgets = getWidgetsForPage(page);
   const instancedIds = new Set(layout.map((w) => w.id));
 
-  // Filter out already-instanced widgets
   const widgets = availableWidgets.filter((w) => !instancedIds.has(w.id));
 
-  // Group by category
   const grouped = widgets.reduce(
     (acc, w) => {
       if (!acc[w.category]) acc[w.category] = [];
@@ -67,7 +63,6 @@ export function AddWidgetModal({ page, col, row, onClose }: AddWidgetModalProps)
     const def = widgetMap.get(widgetId);
     if (!def) return;
 
-    // Check if placement is possible
     const testInstance = { id: widgetId, col, row, w: def.defaultW, h: def.defaultH };
     if (!canPlace(testInstance, layout)) {
       setError(
@@ -90,7 +85,6 @@ export function AddWidgetModal({ page, col, row, onClose }: AddWidgetModalProps)
         ref={modalRef}
         className="w-full max-w-md rounded-lg border bg-card shadow-2xl overflow-hidden"
       >
-        {/* Header */}
         <div className="flex items-center justify-between border-b px-4 py-3">
           <div>
             <h3 className="text-sm font-semibold text-card-foreground">Adicionar Widget</h3>
@@ -106,14 +100,12 @@ export function AddWidgetModal({ page, col, row, onClose }: AddWidgetModalProps)
           </button>
         </div>
 
-        {/* Error message */}
         {error && (
           <div className="mx-4 mt-3 rounded bg-red-500/10 border border-red-500/30 px-3 py-2 text-[11px] text-red-600 dark:text-red-400">
             {error}
           </div>
         )}
 
-        {/* Widget list */}
         <div className="max-h-80 overflow-y-auto p-4 space-y-4">
           {widgets.length === 0 ? (
             <p className="text-xs text-muted text-center py-4">

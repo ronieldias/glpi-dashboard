@@ -4,8 +4,7 @@ import { useEffect, useRef } from "react";
 import { useVoice } from "@/providers/voice-provider";
 import { useTicketsAll } from "@/hooks/useTickets";
 
-/** Intervalo do resumo falado dos KPIs. */
-const KPI_SUMMARY_MS = 10 * 60 * 1000; // 10 min
+const KPI_SUMMARY_MS = 10 * 60 * 1000;
 
 interface RecentLite {
   id: number;
@@ -13,6 +12,8 @@ interface RecentLite {
   typeLabel: string;
   priorityLabel: string;
   recipientName: string;
+  location: string;
+  date_creation: string;
   sla: string;
   slaOverdue: boolean;
 }
@@ -23,15 +24,6 @@ interface KpisLite {
   unassigned: number;
 }
 
-/**
- * Dispara os anúncios por voz a partir dos dados de chamados (sem UI própria).
- * - Novos chamados (entraram desde a última leitura)
- * - Novos SLA vencidos
- * - Resumo periódico dos KPIs
- *
- * Só fala quando a voz está ativada. Na primeira carga apenas registra a
- * baseline (não anuncia os chamados já existentes).
- */
 export function VoiceAnnouncer() {
   const { enabled, speak } = useVoice();
   const { data } = useTicketsAll();
@@ -39,41 +31,53 @@ export function VoiceAnnouncer() {
   const recent = (data?.recent ?? []) as RecentLite[];
   const kpis = data?.kpis as KpisLite | undefined;
 
-  const seenIds = useRef<Set<number> | null>(null);
-  const overdueIds = useRef<Set<number>>(new Set());
+  const armed = useRef(false);
+  const announced = useRef<Set<number>>(new Set());
+  const announcedOverdue = useRef<Set<number>>(new Set());
 
-  // Novos chamados + novos SLA vencidos
   useEffect(() => {
-    if (recent.length === 0) return;
+    if (!enabled) armed.current = false;
+  }, [enabled]);
 
-    const currentIds = new Set(recent.map((t) => t.id));
-    const currentOverdue = new Set(
-      recent.filter((t) => t.slaOverdue && t.sla !== "-").map((t) => t.id),
-    );
+  useEffect(() => {
+    if (!enabled || recent.length === 0) return;
 
-    // só anuncia a partir da 2ª leitura (evita falar tudo no 1º carregamento)
-    if (seenIds.current && enabled) {
-      const novos = recent.filter((t) => !seenIds.current!.has(t.id));
-      for (const t of novos.slice(0, 2)) {
-        speak(
-          `Novo chamado ${t.typeLabel}, prioridade ${t.priorityLabel}: ` +
-            `${t.name}. Solicitante ${t.recipientName}.`,
-        );
-      }
-
-      const novosVencidos = recent.filter(
-        (t) => currentOverdue.has(t.id) && !overdueIds.current.has(t.id),
+    if (!armed.current) {
+      armed.current = true;
+      announced.current = new Set(recent.map((t) => t.id));
+      announcedOverdue.current = new Set(
+        recent.filter((t) => t.slaOverdue && t.sla !== "-").map((t) => t.id),
       );
-      for (const t of novosVencidos.slice(0, 2)) {
-        speak(`Atenção: SLA vencido no chamado ${t.name}`);
-      }
+      return;
     }
 
-    seenIds.current = currentIds;
-    overdueIds.current = currentOverdue;
+    const byArrival = (a: RecentLite, b: RecentLite) =>
+      new Date(a.date_creation).getTime() - new Date(b.date_creation).getTime();
+
+    const novos = recent
+      .filter((t) => !announced.current.has(t.id))
+      .sort(byArrival);
+    for (const t of novos) {
+      announced.current.add(t.id);
+      const setor = t.location && t.location !== "-" ? `, setor ${t.location}` : "";
+      speak(
+        `Novo chamado ${t.typeLabel}, prioridade ${t.priorityLabel}: ` +
+          `${t.name}. Solicitante ${t.recipientName}${setor}.`,
+      );
+    }
+
+    const novosVencidos = recent.filter(
+      (t) =>
+        t.slaOverdue &&
+        t.sla !== "-" &&
+        !announcedOverdue.current.has(t.id),
+    );
+    for (const t of novosVencidos) {
+      announcedOverdue.current.add(t.id);
+      speak(`Atenção: SLA vencido no chamado ${t.name}`);
+    }
   }, [recent, enabled, speak]);
 
-  // Resumo periódico dos KPIs
   useEffect(() => {
     if (!enabled) return;
     const id = setInterval(() => {

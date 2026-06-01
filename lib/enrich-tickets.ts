@@ -9,17 +9,10 @@ import type {
 
 const TICKETS_TTL_MS = 15_000;
 const RELATIONS_TTL_MS = 15_000;
-const USERS_TTL_MS = 5 * 60_000; // 5 min — usuários mudam raramente
+const USERS_TTL_MS = 5 * 60_000;
 
 export type UserMap = Record<string, string>;
 
-/**
- * Constrói um Map { id|name → "Firstname Realname" } com TODOS os usuários
- * do GLPI (paginação real, cached por 5 min).
- *
- * Indexa por ID *e* por username pra resolver tanto `expand_dropdowns=false`
- * (devolve ID) quanto `expand_dropdowns=true` (devolve name).
- */
 export async function getUserMap(): Promise<UserMap> {
   return getOrFetch("users-map", USERS_TTL_MS, async () => {
     const users = await glpiFetchAll<GLPIUser>("/User", { chunkSize: 300 });
@@ -42,25 +35,6 @@ export interface EnrichedTicketsData {
   userMap: UserMap;
 }
 
-/**
- * Busca todos os tickets do GLPI já enriquecidos com:
- * - _users_id_assign (técnicos)
- * - _users_id_observer (observadores)
- * - _users_id_requester (requerentes adicionais)
- * - _groups_id_assign (grupos)
- *
- * Esses campos NÃO vêm no `/Ticket?expand_dropdowns=true` — só em `/search/Ticket`
- * ou via relacionais `Ticket_User` e `Group_Ticket`. Aqui buscamos os relacionais
- * em paralelo e populamos em memória.
- *
- * Cached em camadas:
- * - tickets-raw: 15s
- * - ticket-users: 15s
- * - group-tickets: 15s
- * - users-map: 5min (cache separado, vide getUserMap)
- *
- * Retorna também o userMap pra views downstream resolverem IDs → nomes.
- */
 export async function getEnrichedTickets(): Promise<EnrichedTicketsData> {
   const [rawTickets, ticketUsers, groupTickets, userMap] = await Promise.all([
     getOrFetch("tickets-raw", TICKETS_TTL_MS, () =>
@@ -78,7 +52,6 @@ export async function getEnrichedTickets(): Promise<EnrichedTicketsData> {
     getUserMap(),
   ]);
 
-  // Indexa relacionais por tickets_id, separando por type
   const assignByTicket = new Map<number, number[]>();
   const observerByTicket = new Map<number, number[]>();
   const requesterByTicket = new Map<number, number[]>();
@@ -105,7 +78,7 @@ export async function getEnrichedTickets(): Promise<EnrichedTicketsData> {
 
   const groupsByTicket = new Map<number, number[]>();
   for (const gt of groupTickets) {
-    if (gt.type !== 2) continue; // só grupos atribuídos
+    if (gt.type !== 2) continue;
     const tid = Number(gt.tickets_id);
     const gid = Number(gt.groups_id);
     if (!Number.isFinite(tid) || !Number.isFinite(gid) || gid <= 0) continue;
@@ -114,7 +87,6 @@ export async function getEnrichedTickets(): Promise<EnrichedTicketsData> {
     else groupsByTicket.set(tid, [gid]);
   }
 
-  // Enriquece cada ticket com os arrays populados (não muta entrada do cache)
   const enriched: GLPITicket[] = rawTickets.map((t) => ({
     ...t,
     _users_id_assign: assignByTicket.get(t.id) ?? [],
@@ -126,10 +98,6 @@ export async function getEnrichedTickets(): Promise<EnrichedTicketsData> {
   return { tickets: enriched, userMap };
 }
 
-/**
- * Resolve ID (string ou number) ou username em nome amigável usando o userMap.
- * Retorna "-" se vazio ou desconhecido.
- */
 export function resolveUserName(
   raw: string | number | unknown,
   userMap: UserMap,

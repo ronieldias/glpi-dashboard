@@ -4,8 +4,6 @@ import * as React from "react";
 import * as RechartsPrimitive from "recharts";
 import { cn } from "@/lib/utils";
 
-// Tema único (dark-first); shadcn original suporta light/dark mas o projeto já
-// se baseia em CSS variables (var(--color-*)) — basta cores planas aqui.
 const THEMES = { light: "", dark: ".dark" } as const;
 
 export type ChartConfig = {
@@ -51,10 +49,7 @@ const ChartContainer = React.forwardRef<
         ref={ref}
         className={cn(
           "flex aspect-video justify-center text-xs",
-          // Painel interno delimitado: dá ao gráfico uma moldura/margem clara
-          // dentro do card, em vez de "flutuar" solto sobre o fundo.
           "rounded-lg border border-border bg-card-foreground/[0.02] p-2",
-          // Pesos consistentes para texto dos charts shadcn
           "[&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground",
           "[&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50",
           "[&_.recharts-curve.recharts-tooltip-cursor]:stroke-border",

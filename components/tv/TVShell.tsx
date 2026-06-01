@@ -7,11 +7,6 @@ import { TVRotator } from "./TVRotator";
 
 const CURSOR_HIDE_DELAY_MS = 3000;
 
-/**
- * Wrapper client-side do layout TV. Responsabilidades:
- * - Esconde o cursor após 3s sem movimento (modo "kiosk")
- * - Renderiza header fixo + rotator + conteúdo
- */
 export function TVShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 

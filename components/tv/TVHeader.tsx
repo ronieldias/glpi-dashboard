@@ -28,7 +28,6 @@ export function TVHeader() {
 
   return (
     <header className="flex shrink-0 items-center justify-between border-b border-zinc-800/80 bg-zinc-950/60 px-6 py-3 text-zinc-100">
-      {/* Esquerda: marca + nav segmentada estilo Linear */}
       <div className="flex items-center gap-5">
         <div className="flex items-center gap-2">
           <span
@@ -65,7 +64,6 @@ export function TVHeader() {
         </nav>
       </div>
 
-      {/* Direita: voz + data + relógio em tipografia tabular */}
       <div className="flex items-center gap-4">
         <VoiceControls />
         {now && (

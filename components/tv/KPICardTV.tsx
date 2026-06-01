@@ -4,14 +4,9 @@ import { cn } from "@/lib/utils";
 interface KPICardTVProps {
   label: string;
   value: number | string;
-  /** Sufixo opcional ao lado do valor (ex: "h", "%", "dias"). */
   unit?: string;
-  /** Ícone à esquerda do label. */
   icon?: LucideIcon;
-  /** Tom semântico: usado APENAS no número/ícone e numa barra fina inferior.
-   * O resto do card permanece neutro (estilo Linear). */
   tone?: "neutral" | "good" | "warn" | "bad" | "critical";
-  /** Comparativo opcional (ex: "+12 vs ontem", "78% ontem"). */
   delta?: string;
 }
 
@@ -39,12 +34,6 @@ const TONE_ICON: Record<NonNullable<KPICardTVProps["tone"]>, string> = {
   critical: "text-red-500",
 };
 
-/**
- * Card de KPI estilo Linear/Apple: superfície neutra com 1 borda sutil,
- * tipografia hierárquica clara, e tom semântico aplicado APENAS ao número
- * (não ao card inteiro). Visual silencioso em estado bom, fica perceptível
- * só quando há algo importante.
- */
 export function KPICardTV({
   label,
   value,
@@ -93,7 +82,6 @@ export function KPICardTV({
         <p className="mt-2 text-xs text-zinc-500">{delta}</p>
       )}
 
-      {/* Barra inferior de tom — único ponto de cor permanente do card */}
       <div
         className={cn(
           "absolute inset-x-0 bottom-0 h-[2px]",

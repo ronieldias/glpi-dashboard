@@ -1,8 +1,11 @@
 "use client";
 
 import { useCallback, useRef } from "react";
-import { Trash2, GripVertical } from "lucide-react";
+import { Trash2, GripVertical, Filter } from "lucide-react";
 import { useDashboardLayout } from "@/hooks/useDashboardLayout";
+import { useFilter } from "@/hooks/useFilter";
+import { useFilterAssignment } from "@/providers/filter-assignment-provider";
+import { WidgetFilterContext } from "@/hooks/useWidgetFilter";
 import { widgetMap } from "@/lib/widget-registry";
 import { canPlace } from "@/lib/widget-layout";
 import type { WidgetInstance } from "@/types/widget";
@@ -17,7 +20,7 @@ type ResizeDirection = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
 function getGridMetrics(gridEl: HTMLElement) {
   const rect = gridEl.getBoundingClientRect();
-  const gap = 8; // 0.5rem = 8px
+  const gap = 8;
   const cellW = (rect.width - gap * (GRID_COLS - 1)) / GRID_COLS;
   const cellH = (rect.height - gap * (GRID_ROWS - 1)) / GRID_ROWS;
   return { rect, cellW, cellH, gap };
@@ -25,6 +28,9 @@ function getGridMetrics(gridEl: HTMLElement) {
 
 export function WidgetWrapper({ instance, children }: WidgetWrapperProps) {
   const { editMode, removeWidget, resizeWidget, layout, setDragGhost, moveWidget } = useDashboardLayout();
+  const { isAssigned, toggle: toggleFilter } = useFilterAssignment();
+  const { filterLabel } = useFilter();
+  const assigned = isAssigned(instance.id);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleResizeStart = useCallback(
@@ -56,38 +62,31 @@ export function WidgetWrapper({ instance, children }: WidgetWrapperProps) {
         let newW = startW;
         let newH = startH;
 
-        // East edge
         if (direction === "e" || direction === "se" || direction === "ne") {
           newW = startW + Math.round(dx / step.x);
         }
-        // West edge — moves col and adjusts width
         if (direction === "w" || direction === "sw" || direction === "nw") {
           const colDelta = Math.round(dx / step.x);
           newCol = startCol + colDelta;
           newW = startW - colDelta;
         }
-        // South edge
         if (direction === "s" || direction === "se" || direction === "sw") {
           newH = startH + Math.round(dy / step.y);
         }
-        // North edge — moves row and adjusts height
         if (direction === "n" || direction === "ne" || direction === "nw") {
           const rowDelta = Math.round(dy / step.y);
           newRow = startRow + rowDelta;
           newH = startH - rowDelta;
         }
 
-        // Clamp size to widget definition limits
         newW = Math.max(def.minW, Math.min(def.maxW, newW));
         newH = Math.max(def.minH, Math.min(def.maxH, newH));
 
-        // Clamp to grid boundaries
         newCol = Math.max(1, newCol);
         newRow = Math.max(1, newRow);
         if (newCol + newW - 1 > GRID_COLS) newW = GRID_COLS - newCol + 1;
         if (newRow + newH - 1 > GRID_ROWS) newH = GRID_ROWS - newRow + 1;
 
-        // Re-clamp in case boundary clamp broke min
         newW = Math.max(def.minW, newW);
         newH = Math.max(def.minH, newH);
 
@@ -127,7 +126,6 @@ export function WidgetWrapper({ instance, children }: WidgetWrapperProps) {
       const startCol = instance.col;
       const startRow = instance.row;
 
-      // Show initial ghost
       setDragGhost({
         id: instance.id,
         col: startCol,
@@ -181,22 +179,39 @@ export function WidgetWrapper({ instance, children }: WidgetWrapperProps) {
   return (
     <div
       ref={containerRef}
-      className="relative h-full w-full"
+      className="group relative h-full w-full"
       style={{
         gridColumn: `${instance.col} / span ${instance.w}`,
         gridRow: `${instance.row} / span ${instance.h}`,
       }}
     >
-      {/* Widget content */}
-      <div className="h-full w-full overflow-hidden">{children}</div>
+      <WidgetFilterContext.Provider value={assigned}>
+        <div className="h-full w-full overflow-hidden">{children}</div>
+      </WidgetFilterContext.Provider>
 
-      {/* Edit mode overlay */}
+      {!editMode && filterLabel && (
+        <button
+          type="button"
+          onClick={() => toggleFilter(instance.id)}
+          title={
+            assigned
+              ? `Filtro "${filterLabel}" aplicado neste card — clique para remover`
+              : `Aplicar o filtro "${filterLabel}" a este card`
+          }
+          className={`absolute top-1 right-1 z-20 flex h-5 w-5 items-center justify-center rounded transition-all ${
+            assigned
+              ? "bg-glpi-primary/90 text-zinc-950"
+              : "bg-black/40 text-white/70 opacity-0 group-hover:opacity-100 hover:bg-black/60"
+          }`}
+        >
+          <Filter className="h-3 w-3" />
+        </button>
+      )}
+
       {editMode && (
         <>
-          {/* Subtle border overlay */}
           <div className="absolute inset-0 border-2 border-dashed border-glpi-primary/40 rounded pointer-events-none z-10" />
 
-          {/* Remove button */}
           <button
             onClick={() => removeWidget(instance.id)}
             className="absolute top-1 right-1 z-20 flex h-5 w-5 items-center justify-center rounded bg-red-500/90 text-white hover:bg-red-600 transition-colors"
@@ -205,7 +220,6 @@ export function WidgetWrapper({ instance, children }: WidgetWrapperProps) {
             <Trash2 className="h-3 w-3" />
           </button>
 
-          {/* Drag handle */}
           <div
             onMouseDown={handleDragStart}
             className="absolute top-1 left-1 z-20 flex h-5 w-5 items-center justify-center rounded bg-black/40 text-white/80 cursor-grab active:cursor-grabbing hover:bg-black/60 transition-colors"
@@ -214,22 +228,13 @@ export function WidgetWrapper({ instance, children }: WidgetWrapperProps) {
             <GripVertical className="h-3 w-3" />
           </div>
 
-          {/* --- Resize handles (8 directions) --- */}
-          {/* North */}
           <div onMouseDown={(e) => handleResizeStart("n", e)} className={`${handle} top-0 left-3 right-3 h-1.5 cursor-n-resize`} />
-          {/* South */}
           <div onMouseDown={(e) => handleResizeStart("s", e)} className={`${handle} bottom-0 left-3 right-3 h-1.5 cursor-s-resize`} />
-          {/* East */}
           <div onMouseDown={(e) => handleResizeStart("e", e)} className={`${handle} top-3 right-0 bottom-3 w-1.5 cursor-e-resize`} />
-          {/* West */}
           <div onMouseDown={(e) => handleResizeStart("w", e)} className={`${handle} top-3 left-0 bottom-3 w-1.5 cursor-w-resize`} />
-          {/* NW */}
           <div onMouseDown={(e) => handleResizeStart("nw", e)} className={`${handle} top-0 left-0 h-3 w-3 cursor-nw-resize`} />
-          {/* NE */}
           <div onMouseDown={(e) => handleResizeStart("ne", e)} className={`${handle} top-0 right-0 h-3 w-3 cursor-ne-resize`} />
-          {/* SW */}
           <div onMouseDown={(e) => handleResizeStart("sw", e)} className={`${handle} bottom-0 left-0 h-3 w-3 cursor-sw-resize`} />
-          {/* SE */}
           <div onMouseDown={(e) => handleResizeStart("se", e)} className={`${handle} bottom-0 right-0 h-3 w-3 cursor-se-resize rounded-tl`} />
         </>
       )}

@@ -130,7 +130,6 @@ export function Header({ onMenuToggle }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-1.5">
-        {/* Botão de filtro: texto+ícone porque tem dropdown */}
         {!editMode && (
           <div className="relative" ref={filterRef}>
             <Button
@@ -158,7 +157,6 @@ export function Header({ onMenuToggle }: HeaderProps) {
           </div>
         )}
 
-        {/* Edit mode controls */}
         {editMode ? (
           <>
             <Button variant="destructive" onClick={cancelEdits}>
@@ -223,7 +221,6 @@ export function Header({ onMenuToggle }: HeaderProps) {
 
         <Separator orientation="vertical" className="mx-1 h-4 bg-white/10" />
 
-        {/* Status de conexão como dot com tooltip */}
         <Tooltip>
           <TooltipTrigger asChild>
             <button
@@ -247,7 +244,6 @@ export function Header({ onMenuToggle }: HeaderProps) {
   );
 }
 
-/** Badge que mostra o filtro de período ativo, com botão de fechar inline. */
 function FilterBadge({
   label,
   onClear,
