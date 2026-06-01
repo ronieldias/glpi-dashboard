@@ -38,7 +38,6 @@ interface DashboardProviderProps {
 }
 
 export function DashboardProvider({ page, children }: DashboardProviderProps) {
-  // Start with default layout to match server render, then hydrate from localStorage
   const [layout, setLayout] = useState<PageLayout>(() => defaultLayouts[page] ?? []);
   const [editMode, setEditMode] = useState(false);
   const [dragGhost, setDragGhost] = useState<DragGhost | null>(null);
@@ -46,7 +45,6 @@ export function DashboardProvider({ page, children }: DashboardProviderProps) {
   const currentPage = useRef(page);
   const hydrated = useRef(false);
 
-  // Hydrate from localStorage after mount (avoids SSR mismatch)
   useEffect(() => {
     if (!hydrated.current) {
       hydrated.current = true;
@@ -55,7 +53,6 @@ export function DashboardProvider({ page, children }: DashboardProviderProps) {
     }
   }, [page]);
 
-  // Reload layout when page changes
   useEffect(() => {
     if (currentPage.current !== page) {
       currentPage.current = page;

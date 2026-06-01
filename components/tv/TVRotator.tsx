@@ -8,48 +8,32 @@ const ROUTES = ["/tv/overview", "/tv/tickets", "/tv/projects"] as const;
 const ROTATION_MS = 30_000;
 const STORAGE_KEY = "tv-rotation-paused";
 
-/**
- * Rotaciona entre as 3 telas do modo TV a cada 30s.
- *
- * Atalhos de teclado:
- * - F  → toggle fullscreen
- * - R / Space → pausa / resume rotação
- * - 1, 2, 3 → vai direto para overview/tickets/projects
- *
- * Persiste estado de pausa em sessionStorage (resiste a refresh).
- * Mostra um indicador discreto no canto da tela.
- */
 export function TVRotator() {
   const router = useRouter();
   const pathname = usePathname();
   const [paused, setPaused] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Restaura estado de pausa do storage
   useEffect(() => {
     try {
       const stored = sessionStorage.getItem(STORAGE_KEY);
       if (stored === "true") setPaused(true);
     } catch {
-      // sessionStorage pode estar indisponível (modo privado)
     }
   }, []);
 
-  // Persiste estado de pausa
   useEffect(() => {
     try {
       sessionStorage.setItem(STORAGE_KEY, String(paused));
     } catch {
-      // ignore
     }
   }, [paused]);
 
-  // Loop de rotação
   useEffect(() => {
     if (paused) return;
 
     const currentIdx = ROUTES.findIndex((r) => pathname.startsWith(r));
-    if (currentIdx === -1) return; // Não está numa rota TV; não rotaciona
+    if (currentIdx === -1) return;
 
     timeoutRef.current = setTimeout(() => {
       const nextIdx = (currentIdx + 1) % ROUTES.length;
@@ -64,10 +48,8 @@ export function TVRotator() {
     };
   }, [pathname, paused, router]);
 
-  // Atalhos de teclado
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      // Não interceptar se usuário está em input/textarea
       const target = e.target as HTMLElement | null;
       if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA") return;
 

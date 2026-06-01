@@ -20,7 +20,6 @@ function computeDates(preset: Exclude<FilterPreset, "custom" | null>): { from: s
     }
     case "week": {
       const d = new Date(now);
-      // Domingo = inicio da semana
       d.setDate(d.getDate() - d.getDay());
       return { from: toLocalDateStr(d), to };
     }

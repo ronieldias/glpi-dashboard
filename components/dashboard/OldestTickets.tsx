@@ -12,11 +12,6 @@ interface OldestTicketsProps {
 
 const ORPHAN_NAME = "Não atribuído";
 
-/**
- * Chamados Antigos — os chamados em aberto mais antigos (top 10), com técnico
- * responsável, idade em dias (vermelha quando crítica) e data de abertura.
- * Mostra o que está parado há mais tempo.
- */
 export function OldestTickets({ data, loading }: OldestTicketsProps) {
   if (loading || !data) {
     return (
@@ -72,7 +67,7 @@ export function OldestTickets({ data, loading }: OldestTicketsProps) {
                   {t.name}
                 </p>
                 <p className="truncate text-[10px] leading-tight text-muted-foreground">
-                  {compactPersonName(t.technician)}
+                  {firstNames(t.technician)}
                 </p>
               </div>
               <div className="flex flex-col items-end leading-none">
@@ -102,24 +97,18 @@ function ageColor(days: number): string {
   return "text-card-foreground";
 }
 
-/** "2026-05-29 11:57:23" → "29/05". */
 function formatShortDate(raw: string): string {
   const datePart = (raw || "").split(" ")[0];
   const [, month, day] = datePart.split("-");
   return month && day ? `${day}/${month}` : datePart;
 }
 
-/** Compacta nome: "RAFAEL SOARES COSTA" → "RAFAEL S. C." */
-function compactPersonName(full: string): string {
+function firstNames(full: string): string {
   if (full === ORPHAN_NAME) return full;
-  const parts = full.trim().split(/\s+/);
-  if (parts.length <= 1) return full;
-  const ignore = new Set(["DA", "DE", "DO", "DAS", "DOS", "E"]);
-  const first = parts[0];
-  const rest = parts
-    .slice(1)
-    .filter((p) => !ignore.has(p.toUpperCase()))
-    .map((p) => p.charAt(0).toUpperCase() + ".")
-    .join(" ");
-  return rest ? `${first} ${rest}` : first;
+  return full
+    .split(",")
+    .map((part) => part.trim().split(/\s+/)[0])
+    .filter(Boolean)
+    .map((name) => name.charAt(0).toUpperCase() + name.slice(1).toLowerCase())
+    .join(", ");
 }

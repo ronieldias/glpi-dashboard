@@ -12,11 +12,6 @@ interface KpisLite {
   unassigned: number;
 }
 
-/**
- * Controles de voz para o cabeçalho (canto superior direito): liga/desliga,
- * lê o resumo agora, e abre as configurações (escolha da voz). O painel de
- * configurações abre como dropdown abaixo dos botões.
- */
 export function VoiceControls() {
   const { enabled, toggle, speak } = useVoice();
   const { data } = useTicketsAll();

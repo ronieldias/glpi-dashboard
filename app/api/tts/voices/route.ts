@@ -14,7 +14,6 @@ interface VoiceItem {
   type: string;
 }
 
-// Ordena por qualidade (melhores tipos primeiro) e depois por nome.
 const TYPE_RANK: Record<string, number> = {
   "Chirp 3 HD": 0,
   Studio: 1,

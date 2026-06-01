@@ -7,11 +7,8 @@ import { cn } from "@/lib/utils";
 import type { ChartDataItem, TechStatusLoad } from "@/types/glpi";
 
 interface CurrentLoadProps {
-  /** Carga atual: nº de chamados em aberto por técnico. */
   load?: ChartDataItem[];
-  /** Carga por técnico decomposta por tempo de abertura (barra empilhada). */
   byTech?: TechStatusLoad[];
-  /** Chamados em aberto por categoria (ranking). */
   byCategory?: ChartDataItem[];
   loading?: boolean;
 }
@@ -26,12 +23,6 @@ const VIEWS = [
   { key: "category", title: "Carga por categoria" },
 ] as const;
 
-/**
- * Painel por técnico que ALTERNA automaticamente (rotação a cada ROTATION_MS,
- * como o ranking) entre duas vistas: carga atual (barras) e a mesma carga
- * EMPILHADA por tempo de abertura do chamado (Hoje → Esta semana → Este mês →
- * Este ano). Barra de progresso + dots indicam a rotação.
- */
 export function CurrentLoad({
   load,
   byTech,
@@ -105,7 +96,6 @@ export function CurrentLoad({
         </div>
       </CardHeader>
 
-      {/* Barra de progresso da rotação */}
       <div className="relative h-0.5 w-full bg-progress-track overflow-hidden flex-shrink-0">
         <div
           key={viewIndex}
@@ -132,8 +122,6 @@ function EmptyView({ text }: { text: string }) {
     </div>
   );
 }
-
-// ─────────────────────────── Vista 1: Carga atual ───────────────────────────
 
 function LoadView({ data }: { data?: ChartDataItem[] }) {
   if (!data || data.length === 0)
@@ -201,7 +189,7 @@ function LoadRow({
         )}
         title={`${name}: ${value} em aberto`}
       >
-        {compactPersonName(name)}
+        {firstName(name)}
       </span>
       <div className="relative h-2 overflow-hidden rounded-full bg-progress-track">
         <div
@@ -228,14 +216,11 @@ function LoadRow({
   );
 }
 
-// ──────────── Vista 2: Carga empilhada por tempo de abertura ────────────────
-
 function StackedView({ data }: { data?: TechStatusLoad[] }) {
   if (!data || data.length === 0) return <EmptyView text="Sem dados" />;
 
   const maxTotal = Math.max(...data.map((d) => d.total)) || 1;
 
-  // Legenda: buckets de tempo distintos presentes, na ordem (Hoje → Este ano).
   const legendMap = new Map<number, { label: string; color: string }>();
   for (const tech of data) {
     for (const seg of tech.segments) {
@@ -266,9 +251,8 @@ function StackedView({ data }: { data?: TechStatusLoad[] }) {
                     : "text-card-foreground",
                 )}
               >
-                {compactPersonName(tech.name)}
+                {firstName(tech.name)}
               </span>
-              {/* Barra empilhada: comprimento ∝ carga total; segmentos por tempo */}
               <div className="h-2.5 w-full overflow-hidden rounded-full bg-progress-track">
                 <div
                   className="flex h-full overflow-hidden rounded-full transition-all duration-500"
@@ -295,7 +279,6 @@ function StackedView({ data }: { data?: TechStatusLoad[] }) {
         })}
       </ul>
 
-      {/* Legenda dos buckets de tempo */}
       <div className="flex flex-shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-t border-border/40 pt-1">
         {legend.map((s) => (
           <span
@@ -314,8 +297,6 @@ function StackedView({ data }: { data?: TechStatusLoad[] }) {
     </div>
   );
 }
-
-// ──────────────────── Vista 3: Carga por categoria (ranking) ────────────────
 
 function CategoryView({ data }: { data?: ChartDataItem[] }) {
   if (!data || data.length === 0) return <EmptyView text="Sem categorias" />;
@@ -351,23 +332,13 @@ function CategoryView({ data }: { data?: ChartDataItem[] }) {
   );
 }
 
-/** Último segmento do nome da categoria (após o último ">"). */
 function categoryLeaf(raw: string): string {
   const parts = raw.split(">").map((p) => p.trim()).filter(Boolean);
   return parts.length > 0 ? parts[parts.length - 1] : raw;
 }
 
-/** Compacta nome: "RAFAEL SOARES COSTA" → "RAFAEL S. C." */
-function compactPersonName(full: string): string {
+function firstName(full: string): string {
   if (full === ORPHAN_NAME) return full;
-  const parts = full.trim().split(/\s+/);
-  if (parts.length <= 1) return full;
-  const ignore = new Set(["DA", "DE", "DO", "DAS", "DOS", "E"]);
-  const first = parts[0];
-  const rest = parts
-    .slice(1)
-    .filter((p) => !ignore.has(p.toUpperCase()))
-    .map((p) => p.charAt(0).toUpperCase() + ".")
-    .join(" ");
-  return rest ? `${first} ${rest}` : first;
+  const first = full.trim().split(/\s+/)[0] || full;
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
 }

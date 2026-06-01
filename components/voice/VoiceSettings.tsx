@@ -20,29 +20,23 @@ function genderLabel(gender: string): string {
   return "Neutra";
 }
 
-/**
- * Configurações da voz: lista todas as vozes pt-BR e define a voz PADRÃO do
- * painel — persistida no servidor, então vale para todas as telas (inclusive
- * a TV). Clicar numa voz salva o padrão e toca um preview.
- */
 export function VoiceSettings({ onClose }: { onClose: () => void }) {
-  const { speak, stop } = useVoice();
+  const { config, setVoice, speak, stop } = useVoice();
   const [voices, setVoices] = useState<Voice[] | null>(null);
-  const [current, setCurrent] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!config.hasKey) {
+      setVoices([]);
+      return;
+    }
     let alive = true;
-    Promise.all([
-      fetch("/api/tts/voices").then((r) => r.json().catch(() => ({}))),
-      fetch("/api/tts/config").then((r) => r.json().catch(() => ({}))),
-    ])
-      .then(([vd, cd]) => {
+    fetch("/api/tts/voices")
+      .then(async (r) => {
+        const d = await r.json().catch(() => ({}));
         if (!alive) return;
-        if (vd.error) setError(vd.error);
-        else setVoices(vd.voices ?? []);
-        if (cd.voice) setCurrent(cd.voice);
+        if (d.error) setError(d.error);
+        else setVoices(d.voices ?? []);
       })
       .catch(() => {
         if (alive) setError("Falha ao carregar as vozes");
@@ -50,29 +44,17 @@ export function VoiceSettings({ onClose }: { onClose: () => void }) {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [config.hasKey]);
 
-  const pick = async (name: string) => {
-    setSaving(name);
-    try {
-      const r = await fetch("/api/tts/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ voice: name }),
-      });
-      if (r.ok) {
-        setCurrent(name);
-        stop(); // interrompe preview anterior (sem sobreposição)
-        speak("Olá, esta é a voz padrão do painel.", name);
-      } else {
-        const d = await r.json().catch(() => ({}));
-        setError(d.error || "Erro ao salvar a voz");
-      }
-    } catch {
-      setError("Erro ao salvar a voz");
-    } finally {
-      setSaving(null);
-    }
+  const pick = (voice: string) => {
+    setVoice(voice);
+    stop();
+    speak(
+      voice === "free"
+        ? "Olá, esta é a voz gratuita do navegador."
+        : "Olá, esta é a voz padrão do painel.",
+      voice,
+    );
   };
 
   return (
@@ -91,60 +73,81 @@ export function VoiceSettings({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      {error && (
-        <p className="px-3 py-3 text-[11px] text-red-400">
-          {error}
-          <span className="mt-1 block text-muted-foreground">
-            Verifique a chave do Google TTS no .env.local.
-          </span>
-        </p>
-      )}
+      <ul className="overflow-y-auto py-1">
+        <VoiceRow
+          selected={config.voice === "free"}
+          label="Gratuita (navegador)"
+          sub="Web Speech API · sem custo"
+          onClick={() => pick("free")}
+        />
 
-      {!voices && !error && (
-        <p className="flex items-center gap-2 px-3 py-3 text-[11px] text-muted-foreground">
-          <Loader2 className="h-3 w-3 animate-spin" /> Carregando vozes…
-        </p>
-      )}
+        {!config.hasKey && (
+          <li className="px-3 py-2 text-[10px] leading-snug text-muted-foreground">
+            Adicione <code className="text-card-foreground">GOOGLE_TTS_API_KEY</code>{" "}
+            no <code className="text-card-foreground">.env.local</code> para
+            liberar as vozes premium do Google.
+          </li>
+        )}
 
-      {voices && (
-        <ul className="overflow-y-auto py-1">
-          {voices.map((v) => {
-            const selected = current === v.name;
-            const isSaving = saving === v.name;
-            return (
-              <li key={v.name}>
-                <button
-                  type="button"
-                  onClick={() => pick(v.name)}
-                  className={`flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left transition-colors hover:bg-muted/50 ${
-                    selected ? "bg-glpi-primary/10" : ""
-                  }`}
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-[11px] font-medium text-card-foreground">
-                      {shortName(v.name)}
-                    </span>
-                    <span className="block truncate text-[10px] text-muted-foreground">
-                      {v.type} · {genderLabel(v.gender)}
-                    </span>
-                  </span>
-                  {isSaving ? (
-                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
-                  ) : (
-                    selected && (
-                      <Check className="h-3.5 w-3.5 shrink-0 text-glpi-primary" />
-                    )
-                  )}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+        {config.hasKey && error && (
+          <li className="px-3 py-2 text-[11px] text-red-400">{error}</li>
+        )}
+
+        {config.hasKey && !voices && !error && (
+          <li className="flex items-center gap-2 px-3 py-2 text-[11px] text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" /> Carregando vozes…
+          </li>
+        )}
+
+        {config.hasKey &&
+          voices?.map((v) => (
+            <VoiceRow
+              key={v.name}
+              selected={config.voice === v.name}
+              label={shortName(v.name)}
+              sub={`${v.type} · ${genderLabel(v.gender)}`}
+              onClick={() => pick(v.name)}
+            />
+          ))}
+      </ul>
 
       <div className="border-t border-border px-3 py-1.5 text-[10px] text-muted-foreground">
         A voz escolhida vira o padrão de todas as telas (inclusive a TV).
       </div>
     </div>
+  );
+}
+
+function VoiceRow({
+  selected,
+  label,
+  sub,
+  onClick,
+}: {
+  selected: boolean;
+  label: string;
+  sub: string;
+  onClick: () => void;
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onClick}
+        className={`flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left transition-colors hover:bg-muted/50 ${
+          selected ? "bg-glpi-primary/10" : ""
+        }`}
+      >
+        <span className="min-w-0">
+          <span className="block truncate text-[11px] font-medium text-card-foreground">
+            {label}
+          </span>
+          <span className="block truncate text-[10px] text-muted-foreground">
+            {sub}
+          </span>
+        </span>
+        {selected && <Check className="h-3.5 w-3.5 shrink-0 text-glpi-primary" />}
+      </button>
+    </li>
   );
 }

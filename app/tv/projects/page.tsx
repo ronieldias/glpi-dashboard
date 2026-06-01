@@ -41,7 +41,6 @@ export default function TVProjectsPage() {
 
   return (
     <div className="grid h-full grid-cols-12 grid-rows-[auto_minmax(0,1fr)] gap-3">
-      {/* KPIs compactos */}
       <div className="col-span-3">
         <KPICardTV
           label="Ativos"
@@ -73,7 +72,6 @@ export default function TVProjectsPage() {
         />
       </div>
 
-      {/* Linha 2: status (donut) à esquerda, lista de progresso à direita */}
       <BigChartCard
         title="Por status"
         subtitle="distribuição"

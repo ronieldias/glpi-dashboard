@@ -5,17 +5,10 @@ interface BigChartCardProps {
   title: string;
   subtitle?: string;
   children: ReactNode;
-  /** Permite estender classes do container (ex: col-span maior). */
   className?: string;
-  /** Conteúdo opcional no canto superior direito (badge, contagem, etc). */
   rightSlot?: ReactNode;
 }
 
-/**
- * Card de gráfico estilo Linear: borda sutil, espaçamento generoso, título
- * com peso médio (não gigante), sem decorações distrativas. Foco visual
- * fica no gráfico, não no chrome do card.
- */
 export function BigChartCard({
   title,
   subtitle,

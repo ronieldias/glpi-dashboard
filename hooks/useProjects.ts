@@ -3,7 +3,7 @@
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
 import { POLLING_INTERVAL } from "@/lib/utils";
-import { useFilter } from "@/hooks/useFilter";
+import { useScopedFilterParams } from "@/hooks/useWidgetFilter";
 
 async function fetchProjectsAll(params: Record<string, string>) {
   const searchParams = new URLSearchParams({ view: "all", ...params });
@@ -15,13 +15,8 @@ async function fetchProjectsAll(params: Record<string, string>) {
   return res.json();
 }
 
-/**
- * Source of truth para projetos. Mesma estratégia de useTicketsAll: 1 fetch
- * por polling, com hooks de conveniência abaixo usando `select` no mesmo
- * queryKey (sem disparar requests extras).
- */
 export function useProjectsAll() {
-  const { filterParams } = useFilter();
+  const filterParams = useScopedFilterParams();
 
   return useQuery({
     queryKey: ["projects", "all", filterParams],
@@ -41,7 +36,7 @@ export function useProjectsAll() {
 }
 
 export function useProjectKPIs() {
-  const { filterParams } = useFilter();
+  const filterParams = useScopedFilterParams();
   return useQuery({
     queryKey: ["projects", "all", filterParams],
     queryFn: () => fetchProjectsAll(filterParams),
@@ -52,7 +47,7 @@ export function useProjectKPIs() {
 }
 
 export function useProjectsByStatus() {
-  const { filterParams } = useFilter();
+  const filterParams = useScopedFilterParams();
   return useQuery({
     queryKey: ["projects", "all", filterParams],
     queryFn: () => fetchProjectsAll(filterParams),
@@ -63,7 +58,7 @@ export function useProjectsByStatus() {
 }
 
 export function useProjectProgress() {
-  const { filterParams } = useFilter();
+  const filterParams = useScopedFilterParams();
   return useQuery({
     queryKey: ["projects", "all", filterParams],
     queryFn: () => fetchProjectsAll(filterParams),
@@ -74,7 +69,7 @@ export function useProjectProgress() {
 }
 
 export function useProjectList() {
-  const { filterParams } = useFilter();
+  const filterParams = useScopedFilterParams();
   return useQuery({
     queryKey: ["projects", "all", filterParams],
     queryFn: () => fetchProjectsAll(filterParams),

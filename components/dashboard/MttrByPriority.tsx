@@ -24,13 +24,6 @@ interface MttrByPriorityProps {
   loading?: boolean;
 }
 
-/**
- * Tempo Médio de Resolução (MTTR) por prioridade, em horas. Calculado apenas
- * sobre tickets resolvidos NO MÊS.
- *
- * Análise: prioridades altas devem ter MTTR baixo. Se Muito Alta > Média,
- * o fluxo de priorização está furado.
- */
 export function MttrByPriority({ data, loading }: MttrByPriorityProps) {
   if (loading || !data) {
     return (

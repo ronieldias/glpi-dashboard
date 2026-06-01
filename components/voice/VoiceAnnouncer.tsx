@@ -4,8 +4,7 @@ import { useEffect, useRef } from "react";
 import { useVoice } from "@/providers/voice-provider";
 import { useTicketsAll } from "@/hooks/useTickets";
 
-/** Intervalo do resumo falado dos KPIs. */
-const KPI_SUMMARY_MS = 10 * 60 * 1000; // 10 min
+const KPI_SUMMARY_MS = 10 * 60 * 1000;
 
 interface RecentLite {
   id: number;
@@ -13,6 +12,7 @@ interface RecentLite {
   typeLabel: string;
   priorityLabel: string;
   recipientName: string;
+  location: string;
   date_creation: string;
   sla: string;
   slaOverdue: boolean;
@@ -24,16 +24,6 @@ interface KpisLite {
   unassigned: number;
 }
 
-/**
- * Dispara os anúncios por voz a partir dos dados de chamados.
- *
- * Pontos-chave para NÃO anunciar aleatoriamente:
- * - os IDs já anunciados ACUMULAM (Set que só cresce), então cada chamado é
- *   falado UMA única vez — mesmo que ele saia e volte ao top‑25 (a lista
- *   "recentes" é limitada, então a membership oscila);
- * - ao LIGAR a voz, "arma" registrando os atuais como já vistos (não anuncia o
- *   backlog) e, daí em diante, fala só os que chegarem.
- */
 export function VoiceAnnouncer() {
   const { enabled, speak } = useVoice();
   const { data } = useTicketsAll();
@@ -45,7 +35,6 @@ export function VoiceAnnouncer() {
   const announced = useRef<Set<number>>(new Set());
   const announcedOverdue = useRef<Set<number>>(new Set());
 
-  // Desligar a voz "desarma": ao religar, a baseline é refeita (sem backlog).
   useEffect(() => {
     if (!enabled) armed.current = false;
   }, [enabled]);
@@ -53,7 +42,6 @@ export function VoiceAnnouncer() {
   useEffect(() => {
     if (!enabled || recent.length === 0) return;
 
-    // Primeira leitura após ligar: registra o estado atual como baseline.
     if (!armed.current) {
       armed.current = true;
       announced.current = new Set(recent.map((t) => t.id));
@@ -66,19 +54,18 @@ export function VoiceAnnouncer() {
     const byArrival = (a: RecentLite, b: RecentLite) =>
       new Date(a.date_creation).getTime() - new Date(b.date_creation).getTime();
 
-    // Novos chamados (nunca anunciados) — na ordem de chegada.
     const novos = recent
       .filter((t) => !announced.current.has(t.id))
       .sort(byArrival);
     for (const t of novos) {
       announced.current.add(t.id);
+      const setor = t.location && t.location !== "-" ? `, setor ${t.location}` : "";
       speak(
         `Novo chamado ${t.typeLabel}, prioridade ${t.priorityLabel}: ` +
-          `${t.name}. Solicitante ${t.recipientName}.`,
+          `${t.name}. Solicitante ${t.recipientName}${setor}.`,
       );
     }
 
-    // SLA recém-vencidos (nunca anunciados como vencidos).
     const novosVencidos = recent.filter(
       (t) =>
         t.slaOverdue &&
@@ -91,7 +78,6 @@ export function VoiceAnnouncer() {
     }
   }, [recent, enabled, speak]);
 
-  // Resumo periódico dos KPIs
   useEffect(() => {
     if (!enabled) return;
     const id = setInterval(() => {

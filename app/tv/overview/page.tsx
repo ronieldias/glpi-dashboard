@@ -65,7 +65,6 @@ export default function TVOverviewPage() {
 
   return (
     <div className="grid h-full grid-cols-12 grid-rows-[auto_minmax(0,1fr)] gap-3">
-      {/* Linha 1: 4 KPIs principais */}
       <div className="col-span-3">
         <KPICardTV
           label="Em aberto"
@@ -102,7 +101,6 @@ export default function TVOverviewPage() {
         />
       </div>
 
-      {/* Linha 2 (resto da tela): tabela de carga à esquerda + 4 KPIs secundários à direita */}
       <BigChartCard
         title="Carga por técnico"
         subtitle="tickets em aberto · top 10"
@@ -161,11 +159,6 @@ export default function TVOverviewPage() {
   );
 }
 
-/**
- * Tabela de carga estilo Linear: linhas finas com barra inline mostrando
- * proporção sobre o máximo. Mais legível e elegante que um bar chart
- * cheio de chrome do Recharts.
- */
 function TechLoadTable({ rows }: { rows: ChartDataItem[] }) {
   if (rows.length === 0) {
     return (

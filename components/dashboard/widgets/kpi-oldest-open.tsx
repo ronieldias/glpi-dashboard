@@ -4,10 +4,6 @@ import { Clock } from "lucide-react";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { useTicketsAll } from "@/hooks/useTickets";
 
-/**
- * Idade (em dias) do ticket aberto há mais tempo. Sinaliza esquecimento.
- * Highlight a partir de 30 dias.
- */
 export function KPIOldestOpen() {
   const { data, isLoading } = useTicketsAll();
   const value = data?.kpis?.oldestOpenDays;

@@ -15,18 +15,6 @@ interface TicketsByTechnicianProps {
 const PAGE_SIZE = 5;
 const ROTATION_MS = 5000;
 
-/**
- * Ranking de técnicos em leaderboard compacto com paginação automática.
- *
- * Cada técnico ocupa UMA linha de altura uniforme — posição, nome, barra de
- * proporção e valor lado a lado — para caber inteiro mesmo em slots baixos do
- * dashboard. O líder (#1) recebe destaque sutil (coroa + cor âmbar) sem mudar
- * a altura da linha, evitando o card gigante que estourava o card e escondia
- * as demais posições.
- *
- * Conta tickets HISTÓRICOS (inclusive fechados). Para carga atual em aberto,
- * use o widget "Carga atual por técnico".
- */
 export function TicketsByTechnician({
   data,
   loading,
@@ -106,7 +94,6 @@ export function TicketsByTechnician({
         </span>
       </CardHeader>
 
-      {/* Barra de progresso da rotação (só aparece se paginando) */}
       {needsRotation && (
         <div className="relative h-0.5 w-full bg-progress-track overflow-hidden flex-shrink-0">
           <div
@@ -133,7 +120,6 @@ export function TicketsByTechnician({
           })}
         </ol>
 
-        {/* Dots de paginação (só se paginando) */}
         {needsRotation && (
           <div
             className="flex shrink-0 items-center justify-center gap-1.5 pt-0.5"
@@ -179,7 +165,6 @@ function RankRow({ position, name, value, max, staggerDelay = 0 }: RankRowProps)
         "tv-row-slide-in group flex items-center gap-2 rounded py-0.5 px-1 transition-colors hover:bg-muted/40",
       )}
     >
-      {/* Posição (+ coroa para o líder) */}
       <div className="flex w-6 flex-shrink-0 items-center justify-end gap-0.5">
         {isLeader && <Crown className="h-3 w-3 text-amber-500" aria-hidden />}
         <span
@@ -192,7 +177,6 @@ function RankRow({ position, name, value, max, staggerDelay = 0 }: RankRowProps)
         </span>
       </div>
 
-      {/* Nome */}
       <span
         className={cn(
           "w-24 flex-shrink-0 truncate text-[11px]",
@@ -200,10 +184,9 @@ function RankRow({ position, name, value, max, staggerDelay = 0 }: RankRowProps)
         )}
         title={name}
       >
-        {name}
+        {firstName(name)}
       </span>
 
-      {/* Barra de proporção (ocupa o espaço restante) */}
       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-progress-track">
         <div
           style={{
@@ -219,7 +202,6 @@ function RankRow({ position, name, value, max, staggerDelay = 0 }: RankRowProps)
         />
       </div>
 
-      {/* Valor */}
       <span
         className={cn(
           "w-9 flex-shrink-0 text-right font-mono text-sm font-bold tabular-nums",
@@ -230,4 +212,10 @@ function RankRow({ position, name, value, max, staggerDelay = 0 }: RankRowProps)
       </span>
     </li>
   );
+}
+
+function firstName(full: string): string {
+  if (full === "Não atribuído") return full;
+  const first = full.trim().split(/\s+/)[0] || full;
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
 }

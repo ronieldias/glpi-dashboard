@@ -33,10 +33,6 @@ async function ensureSession(): Promise<string> {
   return sessionToken;
 }
 
-/**
- * Faz uma requisição autenticada ao GLPI e retorna a Response crua.
- * Útil para ler headers (Content-Range) sem perder o corpo.
- */
 export async function glpiFetchRaw(
   endpoint: string,
   params?: Record<string, string>,
@@ -58,7 +54,6 @@ export async function glpiFetchRaw(
     },
   });
 
-  // Se sessão expirada, renovar e tentar novamente
   if (res.status === 401) {
     sessionToken = null;
     const newToken = await initSession();

@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDefaultVoice, isValidVoice } from "@/lib/voice-config";
+import { getDefaultVoice, isValidVoice, FREE_VOICE } from "@/lib/voice-config";
 
-// Chave fica no servidor (.env.local — fora do git). A voz padrão é definida
-// nas configurações da UI (persistida no servidor), não mais por env.
 const API_KEY = process.env.GOOGLE_TTS_API_KEY;
 const ENDPOINT = "https://texttospeech.googleapis.com/v1/text:synthesize";
 
-// Cache em memória (texto+voz -> base64 mp3): frases repetidas (alertas, resumos)
-// não voltam a chamar/cobrar a API do Google.
 const cache = new Map<string, string>();
 const MAX_CACHE = 300;
 
@@ -35,8 +31,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Texto vazio" }, { status: 400 });
   }
 
-  // voz do request (preview) tem prioridade; senão usa o padrão salvo no painel
   const voice = isValidVoice(requested) ? requested : await getDefaultVoice();
+  if (voice === FREE_VOICE) {
+    return NextResponse.json(
+      { error: "Voz gratuita é sintetizada no navegador" },
+      { status: 409 },
+    );
+  }
   const cacheKey = `${voice}::${text}`;
   const cached = cache.get(cacheKey);
   if (cached) return audioResponse(cached);

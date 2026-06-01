@@ -16,11 +16,6 @@ interface SLAIndicatorProps {
   loading?: boolean;
 }
 
-/**
- * Atenção: apesar do nome do componente, este widget mostra a distribuição
- * "Incidentes vs Requisições" (campo type do ticket). Refatoração mecânica
- * agora trocou só o visual; lógica antiga preservada.
- */
 export function SLAIndicator({ data, loading }: SLAIndicatorProps) {
   if (loading || !data) {
     return (

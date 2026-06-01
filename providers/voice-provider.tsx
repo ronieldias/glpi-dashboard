@@ -10,13 +10,18 @@ import {
   type ReactNode,
 } from "react";
 
+interface VoiceConfig {
+  voice: string;
+  hasKey: boolean;
+}
+
 interface VoiceContextValue {
   enabled: boolean;
   toggle: () => void;
-  /** Enfileira um texto. `voiceOverride` toca com uma voz específica (preview). */
   speak: (text: string, voiceOverride?: string) => void;
-  /** Para imediatamente o áudio atual e limpa a fila. */
   stop: () => void;
+  config: VoiceConfig;
+  setVoice: (voice: string) => void;
 }
 
 const VoiceContext = createContext<VoiceContextValue | null>(null);
@@ -28,6 +33,7 @@ export function useVoice(): VoiceContextValue {
 }
 
 const STORAGE_KEY = "glpi-voice";
+const FREE_VOICE = "free";
 const SILENT_WAV =
   "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
 
@@ -38,10 +44,19 @@ interface QueueItem {
 
 export function VoiceProvider({ children }: { children: ReactNode }) {
   const [enabled, setEnabled] = useState(false);
+  const [config, setConfigState] = useState<VoiceConfig>({
+    voice: FREE_VOICE,
+    hasKey: false,
+  });
+  const configRef = useRef(config);
   const queueRef = useRef<QueueItem[]>([]);
   const playingRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const endCurrentRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    configRef.current = config;
+  }, [config]);
 
   useEffect(() => {
     audioRef.current = new Audio();
@@ -52,51 +67,101 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined" && localStorage.getItem(STORAGE_KEY) === "1") {
       setEnabled(true);
     }
+    fetch("/api/tts/config")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d && typeof d.voice === "string") {
+          setConfigState({ voice: d.voice, hasKey: !!d.hasKey });
+        }
+      })
+      .catch(() => {});
   }, []);
 
+  const playBrowser = (text: string) =>
+    new Promise<void>((resolve) => {
+      if (typeof window === "undefined" || !window.speechSynthesis) {
+        resolve();
+        return;
+      }
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "pt-BR";
+      const voices = window.speechSynthesis.getVoices();
+      const pt = voices.find((v) => v.lang?.toLowerCase().startsWith("pt"));
+      if (pt) u.voice = pt;
+      let settled = false;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        endCurrentRef.current = null;
+        resolve();
+      };
+      endCurrentRef.current = () => {
+        window.speechSynthesis.cancel();
+        done();
+      };
+      u.onend = done;
+      u.onerror = done;
+      window.speechSynthesis.speak(u);
+    });
+
+  const playGoogle = async (
+    audio: HTMLAudioElement,
+    text: string,
+    voice?: string,
+  ) => {
+    const res = await fetch("/api/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, voice: voice || undefined }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.warn(`[voz] /api/tts retornou ${res.status}:`, body.slice(0, 200));
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    audio.pause();
+    audio.src = url;
+    await new Promise<void>((resolve) => {
+      let settled = false;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        audio.onended = null;
+        audio.onerror = null;
+        endCurrentRef.current = null;
+        URL.revokeObjectURL(url);
+        resolve();
+      };
+      endCurrentRef.current = done;
+      audio.onended = done;
+      audio.onerror = done;
+      audio.play().catch((err) => {
+        console.warn(
+          "[voz] o navegador bloqueou o áudio — clique no botão de voz (🔊) para liberar.",
+          err,
+        );
+        done();
+      });
+    });
+  };
+
   const playNext = useCallback(async () => {
-    const audio = audioRef.current;
-    if (!audio || playingRef.current) return;
+    if (playingRef.current) return;
     const item = queueRef.current.shift();
     if (!item) return;
 
     playingRef.current = true;
     try {
-      const res = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: item.text, voice: item.voice || undefined }),
-      });
-      if (!res.ok) {
-        const body = await res.text().catch(() => "");
-        console.warn(`[voz] /api/tts retornou ${res.status}:`, body.slice(0, 200));
-      } else {
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        audio.pause();
-        audio.src = url;
-        await new Promise<void>((resolve) => {
-          let settled = false;
-          const done = () => {
-            if (settled) return;
-            settled = true;
-            audio.onended = null;
-            audio.onerror = null;
-            endCurrentRef.current = null;
-            URL.revokeObjectURL(url);
-            resolve();
-          };
-          endCurrentRef.current = done;
-          audio.onended = done;
-          audio.onerror = done;
-          audio.play().catch((err) => {
-            console.warn(
-              "[voz] o navegador bloqueou o áudio — clique no botão de voz (🔊) para liberar.",
-              err,
-            );
-            done();
-          });
-        });
+      const cfg = configRef.current;
+      let voice = item.voice ?? cfg.voice;
+      if (!cfg.hasKey) voice = FREE_VOICE;
+      if (voice === FREE_VOICE) {
+        await playBrowser(item.text);
+      } else if (audioRef.current) {
+        await playGoogle(audioRef.current, item.text, voice);
       }
     } catch (err) {
       console.warn("[voz] falha ao reproduzir:", err);
@@ -110,6 +175,9 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   const stop = useCallback(() => {
     queueRef.current = [];
     audioRef.current?.pause();
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
     endCurrentRef.current?.();
   }, []);
 
@@ -126,6 +194,15 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     [playNext],
   );
 
+  const setVoice = useCallback((voice: string) => {
+    setConfigState((prev) => ({ ...prev, voice }));
+    fetch("/api/tts/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ voice }),
+    }).catch(() => {});
+  }, []);
+
   const toggle = useCallback(() => {
     setEnabled((prev) => {
       const next = !prev;
@@ -141,16 +218,16 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
         queueRef.current.push({ text: "Voz ativada" });
         void playNext();
       } else {
-        queueRef.current = [];
-        audioRef.current?.pause();
-        endCurrentRef.current?.();
+        stop();
       }
       return next;
     });
-  }, [playNext]);
+  }, [playNext, stop]);
 
   return (
-    <VoiceContext.Provider value={{ enabled, toggle, speak, stop }}>
+    <VoiceContext.Provider
+      value={{ enabled, toggle, speak, stop, config, setVoice }}
+    >
       {children}
     </VoiceContext.Provider>
   );

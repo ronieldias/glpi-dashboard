@@ -11,18 +11,6 @@ interface TicketsByStatusProps {
   loading?: boolean;
 }
 
-/**
- * Status dos Chamados — agrupa a distribuição em dois blocos com leituras
- * operacionais distintas:
- *
- * - **Em aberto** (Novo / Em atendimento / Planejado / Pendente): o que ainda
- *   demanda ação. É o número que importa no dia a dia do helpdesk.
- * - **Concluídos** (Resolvido / Fechado): histórico, costuma dominar o volume.
- *
- * Sem separar os dois, "Fechado" engole a barra e os status acionáveis viram
- * slivers ilegíveis. A barra única no topo mostra a proporção aberto×concluído;
- * as colunas abaixo detalham cada status sem repetir a proporção por item.
- */
 export function TicketsByStatus({ data, loading }: TicketsByStatusProps) {
   if (loading || !data) {
     return (
@@ -71,7 +59,6 @@ export function TicketsByStatus({ data, loading }: TicketsByStatusProps) {
       </CardHeader>
 
       <CardContent className="flex-1 min-h-0 flex flex-col gap-3 px-3 pb-3 overflow-hidden">
-        {/* Resumo: os dois totais lado a lado */}
         <div className="grid grid-cols-2 gap-3 flex-shrink-0">
           <GroupTotal
             label="Em aberto"
@@ -87,10 +74,8 @@ export function TicketsByStatus({ data, loading }: TicketsByStatusProps) {
           />
         </div>
 
-        {/* Barra única: segmentos abertos (esq) | concluídos (dir) */}
         <SplitBar open={open} done={done} total={total} />
 
-        {/* Detalhe por status, em duas colunas */}
         <div className="grid grid-cols-2 gap-x-4 flex-1 min-h-0 overflow-y-auto">
           <StatusColumn heading="Abertos" items={open} emptyText="Nenhum" />
           <StatusColumn heading="Concluídos" items={done} emptyText="Nenhum" />

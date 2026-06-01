@@ -21,10 +21,6 @@ const chartConfig: ChartConfig = {
   closed: { label: "Fechados", color: "#10B981" },
 };
 
-/**
- * Tendência diária com área preenchida (gradient) — feedback visual mais
- * rico que linhas finas. Permite comparar a ÁREA (volume total) e o pico.
- */
 export function TicketsTrend({ data, loading }: TicketsTrendProps) {
   if (loading || !data) {
     return (

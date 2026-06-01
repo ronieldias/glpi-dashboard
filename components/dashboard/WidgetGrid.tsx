@@ -32,15 +32,11 @@ export function WidgetGrid({ page }: WidgetGridProps) {
         className="h-full w-full relative"
         style={{
           display: "grid",
-          // minmax(0, 1fr) — e NÃO "1fr" (= minmax(auto,1fr)) — força faixas
-          // iguais. Sem o min 0, um widget com conteúdo alto estica suas linhas
-          // e deforma o grid (células ficam de tamanhos diferentes).
           gridTemplateColumns: `repeat(${GRID_COLS}, minmax(0, 1fr))`,
           gridTemplateRows: `repeat(${GRID_ROWS}, minmax(0, 1fr))`,
           gap: "0.5rem",
         }}
       >
-        {/* Render widgets */}
         {layout.map((instance) => {
           const def = widgetMap.get(instance.id);
           if (!def) return null;
@@ -52,7 +48,6 @@ export function WidgetGrid({ page }: WidgetGridProps) {
           );
         })}
 
-        {/* Render empty cells in edit mode */}
         {editMode &&
           emptyCells.map(({ col, row }) => (
             <EmptyCell
@@ -63,7 +58,6 @@ export function WidgetGrid({ page }: WidgetGridProps) {
             />
           ))}
 
-        {/* Drag ghost preview */}
         {dragGhost && (
           <div
             className={`rounded border-2 border-dashed pointer-events-none z-30 transition-colors ${
@@ -79,7 +73,6 @@ export function WidgetGrid({ page }: WidgetGridProps) {
         )}
       </div>
 
-      {/* Add widget modal */}
       {modalOrigin && (
         <AddWidgetModal
           page={page}
