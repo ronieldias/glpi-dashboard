@@ -1,0 +1,21 @@
+# GLPI Dashboard em contêiner único.
+# O servidor GLPI (192.168.3.15) é acessado diretamente pela rede — sem host.docker.internal.
+# Configure as variáveis em .env antes de subir.
+services:
+  glpi-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: glpi-dashboard:latest
+    container_name: glpi-dashboard
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    env_file:
+      - .env.local
+    volumes:
+      # Persiste a configuração de voz entre reinícios do container
+      - glpi-dashboard-data:/app/data
+
+volumes:
+  glpi-dashboard-data:

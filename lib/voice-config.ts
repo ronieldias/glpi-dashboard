@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 
-const CONFIG_FILE = path.join(process.cwd(), ".voice-config.json");
+const CONFIG_FILE = path.join(process.cwd(), "data", ".voice-config.json");
 const VOICE_PATTERN = /^pt-BR-[A-Za-z0-9-]+$/;
 
 export const FREE_VOICE = "free";
@@ -29,5 +29,6 @@ export async function getDefaultVoice(): Promise<string> {
 
 export async function setDefaultVoice(voice: string): Promise<void> {
   if (!isValidVoice(voice)) throw new Error("Voz inválida");
+  await fs.mkdir(path.dirname(CONFIG_FILE), { recursive: true });
   await fs.writeFile(CONFIG_FILE, JSON.stringify({ voice }), "utf8");
 }
