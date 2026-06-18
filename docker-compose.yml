@@ -10,7 +10,7 @@ services:
     container_name: glpi-dashboard
     restart: unless-stopped
     ports:
-      - "3001:3000"
+      - "3000:3000"
     env_file:
       - .env.local
     volumes:
